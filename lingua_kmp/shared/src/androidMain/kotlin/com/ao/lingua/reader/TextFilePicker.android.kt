@@ -27,6 +27,7 @@ actual fun rememberTextFilePicker(
 }
 
 private fun ContentResolver.readTextFile(uri: Uri): PickedTextFile? = runCatching {
+    // ponytail: 전체 파일 동기 읽기가 큰 문서에서 지연되면 백그라운드 스트리밍으로 바꾼다.
     val name = query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
         val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
         if (nameColumn >= 0 && cursor.moveToFirst()) cursor.getString(nameColumn) else null

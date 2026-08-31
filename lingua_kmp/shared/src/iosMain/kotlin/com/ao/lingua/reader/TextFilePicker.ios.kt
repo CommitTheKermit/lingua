@@ -64,6 +64,7 @@ private class TextFilePickerDelegate(
 
 @OptIn(ExperimentalForeignApi::class)
 private fun NSURL.readTextFile(): PickedTextFile? {
+    // ponytail: 전체 파일 동기 읽기가 큰 문서에서 지연되면 백그라운드 스트리밍으로 바꾼다.
     val hasAccess = startAccessingSecurityScopedResource()
     return try {
         NSString.stringWithContentsOfURL(this, NSUTF8StringEncoding, null)?.let { content ->

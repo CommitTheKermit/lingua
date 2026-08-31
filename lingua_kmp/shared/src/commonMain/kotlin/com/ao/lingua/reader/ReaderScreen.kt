@@ -53,7 +53,7 @@ fun ReaderScreen(
             )
             Spacer(Modifier.height(16.dp))
             Button(onClick = onOpenFile) {
-                Text("Open .txt file")
+                Text(".txt 파일 열기")
             }
 
             if (state.sentences.isEmpty()) {
@@ -62,7 +62,7 @@ fun ReaderScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Choose a .txt file to start reading.",
+                        text = "읽을 .txt 파일을 선택해 주세요.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
@@ -91,7 +91,7 @@ fun ReaderScreen(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .semantics { contentDescription = "Reading position ${state.positionLabel}" },
+                        .semantics { contentDescription = "읽기 위치 ${state.positionLabel}" },
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(
@@ -103,14 +103,14 @@ fun ReaderScreen(
                         enabled = state.canGoPrevious,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Previous")
+                        Text("이전")
                     }
                     Button(
                         onClick = onNext,
                         enabled = state.canGoNext,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Next")
+                        Text("다음")
                     }
                 }
             }
