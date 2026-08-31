@@ -46,6 +46,9 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
 
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 
