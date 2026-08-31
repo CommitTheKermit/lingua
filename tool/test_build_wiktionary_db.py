@@ -22,6 +22,12 @@ METADATA = BuildMetadata(
     source_sha256=SOURCE_SHA256,
     generated_at="2026-08-31T00:00:00Z",
 )
+ROOT = Path(__file__).resolve().parents[1]
+BUNDLED_DATABASE = (
+    ROOT
+    / "lingua_kmp/shared/src/commonMain/composeResources/files/dict/wiktionary_en_ko.db"
+)
+BUNDLED_NOTICE = BUNDLED_DATABASE.with_name("NOTICE.txt")
 
 
 def fixture_lines() -> list[str]:
@@ -43,7 +49,6 @@ def fixture_lines() -> list[str]:
             "lang_code": "en",
             "pos": "verb",
             "senses": [{"glosses": ["달리다.", "작동하다."]}],
-            "forms": [{"form": "ran"}, {"form": "running"}],
         },
         {
             "word": "run",
@@ -216,6 +221,58 @@ class BuildWiktionaryDatabaseTest(unittest.TestCase):
                 database_sha256,
             ):
                 self.assertIn(expected, notice_text)
+
+    def test_bundled_asset_passes_representative_quality_gate(self):
+        connection = sqlite3.connect(BUNDLED_DATABASE)
+        self.assertEqual("ok", connection.execute("PRAGMA integrity_check").fetchone()[0])
+
+        rows = connection.execute(
+            """
+            SELECT k.lookup_key, e.headword, e.part_of_speech, k.priority,
+                   s.korean_definition
+            FROM dictionary_lookup_key AS k
+            JOIN dictionary_entry AS e ON e.id = k.entry_id
+            JOIN dictionary_sense AS s ON s.entry_id = e.id
+            WHERE k.lookup_key IN ('dog', 'run', 'bank', 'ran', 'running')
+            ORDER BY k.lookup_key, k.priority, e.id, s.sequence
+            """
+        ).fetchall()
+        by_lookup = {
+            lookup: [row for row in rows if row[0] == lookup]
+            for lookup in ("dog", "run", "bank", "ran", "running")
+        }
+        self.assertTrue(any(row[2:] == ("명사", 0, "개.") for row in by_lookup["dog"]))
+        self.assertTrue(any(row[2] == "동사" and "미행하다" in row[4] for row in by_lookup["dog"]))
+        self.assertTrue(any("달리다" in row[4] for row in by_lookup["run"]))
+        self.assertTrue(any("작동하다" in row[4] for row in by_lookup["run"]))
+        self.assertTrue(any("은행" in row[4] for row in by_lookup["bank"]))
+        self.assertTrue(any("제방" in row[4] for row in by_lookup["bank"]))
+        for lookup in ("ran", "running"):
+            self.assertTrue(by_lookup[lookup])
+            self.assertTrue(all(row[1:4] == ("run", "동사", 1) for row in by_lookup[lookup]))
+
+        self.assertEqual(
+            0,
+            connection.execute(
+                "SELECT COUNT(*) FROM dictionary_lookup_key WHERE lookup_key = ?",
+                ("zzzzlinguafixturemissingwordzzzz",),
+            ).fetchone()[0],
+        )
+        metadata = connection.execute(
+            "SELECT data_version, source_sha256, license FROM dictionary_metadata"
+        ).fetchone()
+        connection.close()
+
+        self.assertEqual(
+            (
+                "kaikki-ko-2026-08-28-3bf5784e7600",
+                "3bf5784e7600cfc557d70ff504bc3a4fc3fd9c42bd54e74946a8f0d6861d58bd",
+                LICENSE_URL,
+            ),
+            metadata,
+        )
+        database_sha256 = hashlib.sha256(BUNDLED_DATABASE.read_bytes()).hexdigest()
+        self.assertIn(database_sha256, BUNDLED_NOTICE.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

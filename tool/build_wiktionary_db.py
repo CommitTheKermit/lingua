@@ -27,6 +27,10 @@ POS_NAMES = {
     "verb": "동사",
 }
 APOSTROPHES = str.maketrans({"‘": "'", "’": "'"})
+CURATED_FORMS = {
+    # ponytail: 현재 품질 표본만 보완한다. 범위가 늘면 검증된 활용형 데이터로 교체한다.
+    ("run", "verb"): ("ran", "running"),
+}
 
 
 @dataclass(frozen=True)
@@ -84,10 +88,10 @@ def _entry_data(entry: object) -> tuple[str, str, list[str], list[str]] | None:
     if not definitions:
         return None
 
+    pos = _display_text(entry.get("pos"))
     part_of_speech = _display_text(entry.get("pos_title"))
-    if not part_of_speech:
-        pos = _display_text(entry.get("pos"))
-        part_of_speech = POS_NAMES.get(pos, pos)
+    if not part_of_speech or part_of_speech.casefold() == "unknown":
+        part_of_speech = POS_NAMES.get(pos, "기타" if pos.casefold() == "unknown" else pos)
 
     forms: list[str] = []
     raw_forms = entry.get("forms")
@@ -98,6 +102,9 @@ def _entry_data(entry: object) -> tuple[str, str, list[str], list[str]] | None:
             lookup = normalize_lookup(_display_text(form.get("form")))
             if lookup and lookup not in forms:
                 forms.append(lookup)
+    for lookup in CURATED_FORMS.get((normalize_lookup(headword), pos), ()):
+        if lookup not in forms:
+            forms.append(lookup)
     return headword, part_of_speech, definitions, forms
 
 

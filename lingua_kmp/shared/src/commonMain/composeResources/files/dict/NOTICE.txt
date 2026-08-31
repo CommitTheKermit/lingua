@@ -1,0 +1,11 @@
+Lingua 오프라인 영한 사전
+
+한국어 위키낱말사전의 영어 표제어 데이터를 Kaikki.org의 Wiktextract 추출물로 가공했습니다.
+데이터 버전: kaikki-ko-2026-08-28-3bf5784e7600
+생성일: 2026-08-31T13:12:23Z
+입력 출처: https://kaikki.org/dictionary/downloads/ko/ko-extract.jsonl.gz
+입력 SHA-256: 3bf5784e7600cfc557d70ff504bc3a4fc3fd9c42bd54e74946a8f0d6861d58bd
+DB SHA-256: 853ff88fad455dfc7facf4f192b0f8a1129c2ab7d17a3fe454c277492958ed73
+라이선스: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+
+원본과 파생 데이터의 이용 시 저작자 표시와 동일조건변경허락 조건을 따라야 합니다.
