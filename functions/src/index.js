@@ -29,7 +29,9 @@ async function handleTranslate(request) {
 }
 
 function requireAnonymous(request) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Authentication is required");
+  if (typeof request.auth?.uid !== "string" || request.auth.uid === "") {
+    throw new HttpsError("unauthenticated", "Authentication is required");
+  }
   if (request.auth.token?.firebase?.sign_in_provider !== "anonymous") {
     throw new HttpsError("permission-denied", "Anonymous authentication is required");
   }

@@ -137,6 +137,29 @@ test("concurrent duplicate requests call DeepL and consume quota only once", asy
   expect(db.data.get("meta/translateBudget").count).toBe(1);
 });
 
+test("a duplicate retries after the first request fails without double charging", async () => {
+  const db = new FakeFirestore();
+  let rejectFirst;
+  const translate = jest.fn()
+    .mockImplementationOnce(() => new Promise((resolve, reject) => { rejectFirst = reject; }))
+    .mockResolvedValueOnce("안녕하세요");
+  const first = executeTranslation({db, request, uid: "anon", translate, now: () => nowMs});
+  while (!rejectFirst) await new Promise(setImmediate);
+  const duplicate = executeTranslation({
+    db, request, uid: "anon", translate, now: () => nowMs,
+    wait: () => new Promise(setImmediate),
+  });
+  rejectFirst(new Error("upstream failed"));
+
+  await expect(first).rejects.toThrow("upstream failed");
+  await expect(duplicate).resolves.toEqual({
+    translated: "안녕하세요", quotaRemaining: 199, cached: false,
+  });
+  expect(translate).toHaveBeenCalledTimes(2);
+  expect(db.data.get("users/anon").quotaRemaining).toBe(199);
+  expect(db.data.get("meta/translateBudget").count).toBe(1);
+});
+
 test("a stale pending request is refunded before a replacement reserves quota", async () => {
   const staleRequest = {
     status: "pending",
