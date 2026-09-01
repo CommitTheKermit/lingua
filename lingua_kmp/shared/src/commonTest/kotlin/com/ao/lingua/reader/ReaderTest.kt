@@ -3,35 +3,77 @@ package com.ao.lingua.reader
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class ReaderTest {
     @Test
-    fun splitsAndNormalizesDocumentText() {
+    fun splitsAndNormalizesDocumentTextWithStableIndexes() {
         assertEquals(
-            listOf("I don't know.", "‘Really?’", "Last line"),
-            SentenceSplitter.split("I don’t know. ‘Really?’ Last line"),
+            listOf("I don't know.", "‘Really?’", "A paragraph without punctuation", "Last line"),
+            SentenceSplitter.split("I don’t know. ‘Really?’\r\n\r\nA paragraph without punctuation\n\nLast line"),
         )
     }
 
     @Test
-    fun keepsRepeatedMatchesAtDistinctIndexes() {
-        assertEquals(
-            listOf(0, 2),
-            findSentenceMatches(listOf("Repeat.", "Between.", "Repeat."), " repeat "),
+    fun readerFeaturesShareAndResumeTheSentenceIndexContract() {
+        val database = ReaderDatabase(":memory:")
+        val store = ReaderStore(database)
+        store.openDocument("first.txt", "Repeat. A \"quoted\" line. Repeat.")
+
+        val firstDocumentId = store.state.documentId
+        assertEquals(listOf(0, 2), findSentenceMatches(store.state.sentences, " repeat "))
+        store.search("repeat")
+        store.moveTo(store.state.searchResults.last())
+        store.toggleBookmark()
+        store.saveUserTranslation("반복, 그리고 \"인용\"")
+        store.updateDisplayStyle(
+            DisplayTarget.USER_TRANSLATION,
+            store.state.displaySettings.getValue(DisplayTarget.USER_TRANSLATION).copy(
+                fontFamily = "Serif",
+                fontSize = 24f,
+                lineHeight = 1.8f,
+                textColor = "#FFFFFFFF",
+                backgroundColor = "#FF1B1B1F",
+            ),
         )
+
+        val resumed = ReaderStore(database)
+        assertEquals(2, resumed.state.index)
+        assertEquals(setOf(2), resumed.state.bookmarks)
+        assertEquals("반복, 그리고 \"인용\"", resumed.state.currentUserTranslation)
+        assertEquals(24f, resumed.state.displaySettings.getValue(DisplayTarget.USER_TRANSLATION).fontSize)
+        assertTrue(resumed.exportCsv().contains("2,\"Repeat.\",\"반복, 그리고 \"\"인용\"\"\""))
+
+        resumed.openDocument("renamed.txt", "Repeat. A \"quoted\" line. Repeat.")
+        assertEquals(firstDocumentId, resumed.state.documentId)
+        assertEquals(2, resumed.state.index)
+
+        resumed.openDocument("second.txt", "New first. New second.")
+        assertNotEquals(firstDocumentId, resumed.state.documentId)
+        assertEquals(0, resumed.state.index)
+        assertTrue(resumed.state.bookmarks.isEmpty())
+        assertTrue(resumed.state.userTranslations.isEmpty())
+        database.close()
     }
 
     @Test
-    fun navigationStopsAtDocumentBounds() {
-        val first = ReaderState(sentences = listOf("First.", "Second."))
-        val second = first.next()
+    fun navigationAndViewerIndexesStopAtDocumentBounds() {
+        val database = ReaderDatabase(":memory:")
+        val store = ReaderStore(database)
+        store.openDocument("bounds.txt", "First. Second.")
 
-        assertEquals(first, first.previous())
-        assertEquals("Second.", second.currentSentence)
-        assertEquals("2/2", second.positionLabel)
-        assertTrue(second.canGoPrevious)
-        assertFalse(second.canGoNext)
-        assertEquals(second, second.next())
+        store.previous()
+        assertEquals(0, store.state.index)
+        assertFalse(store.state.canGoPrevious)
+        store.next()
+        store.next()
+        assertEquals(1, store.state.index)
+        assertEquals("2/2", store.state.positionLabel)
+        assertTrue(store.state.canGoPrevious)
+        assertFalse(store.state.canGoNext)
+        store.moveTo(99)
+        assertEquals(1, store.state.index)
+        database.close()
     }
 }
