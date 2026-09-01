@@ -1,0 +1,128 @@
+goal: "Flutter 기반 Lingua 영한 리더를 로그인 없는 Android와 iOS Compose Multiplatform 앱으로 완전히 전환하고, 오프라인 사전과 Firebase 익명 번역 클라이언트를 제공한다."
+
+constraints:
+  - "현재 저장소의 lingua_kmp 디렉터리를 실행 cwd와 경로 기준으로 사용한다."
+  - "검증은 cwd를 바꾸지 않은 단독 ./gradlew test만 tests_passed 증거로 사용한다."
+  - "Ouroboros가 만든 ooo/<session> 관리 브랜치에서 다른 브랜치를 만들거나 전환하지 않고, 각 실행 슬라이스를 별도 커밋한다."
+  - "Flutter 소스는 ../lingua_flutter에 백업으로 유지하되 활성 빌드, 테스트와 배포 대상에서는 제외한다."
+  - "Android applicationId는 com.friendshipHyun을 유지하고 iOS Bundle ID는 com.ao.lingua를 사용한다."
+  - "Android와 iOS의 UI, 화면 상태, 문장 처리, 검색, CSV 생성과 저장 계약은 common KMP 코드로 공유한다."
+  - "지원 문서는 TXT 한 종류이며 마지막 단일 문서를 앱 저장소에 복사하고 콘텐츠 기반 ID로 자동 재개한다."
+  - "문장 위치, 검색 결과, 이동과 북마크는 문장 인덱스를 기준으로 한다."
+  - "사용자 데이터 reader.db와 읽기 전용 위키낱말사전 SQLite를 분리하고 androidx.sqlite KMP와 BundledSQLiteDriver를 사용한다."
+  - "사전 결과가 없을 때만 사용자가 translateProxy 번역을 선택할 수 있으며 앱은 DeepL 키를 저장하거나 전달받지 않는다."
+  - "로그인, 회원가입, 계정 복구, 이메일 인증, 클라우드 단어장과 사용자 데이터 동기화를 포함하지 않는다."
+  - "Firebase 익명 인증은 원격 번역이 처음 필요할 때 수행하고 오프라인 리더와 사전은 인증이나 네트워크 없이 동작한다."
+  - "캐시된 번역은 네트워크 호출과 quota 차감 없이 재사용하고 하단에 잔량과 충전 시간을 표시한다."
+  - "Android release는 Play Integrity, iOS release는 App Attest와 DeviceCheck 대체 경로, 개발 빌드는 Debug Provider를 사용한다."
+  - "한국어 위키낱말사전 파생 DB와 배포물에 CC BY-SA 4.0 출처와 NOTICE를 포함한다."
+  - "App Store와 Google Play 업로드, Android 실기기와 iOS App Attest 실기기 검증은 이번 자동 실행에서 제외하고 출시 관문으로 남긴다."
+  - "단일 구현용 인터페이스, 팩토리와 미래 확장용 계층은 만들지 않는다."
+
+acceptance_criteria:
+  - description: "TXT 문서 열기, 안정적인 문장 분리, 문장 이동, 자동 재개, 검색, 전체 문장 뷰어, 북마크, 사용자 번역 자동 저장, 표시 설정과 CSV 생성이 공통 문장 인덱스 계약으로 동작한다."
+    verify: "./gradlew test"
+    artifacts: "NONE"
+    expect: "NONE"
+
+  - description: "단어 버튼과 직접 검색이 동일한 읽기 전용 위키낱말사전 SQLite를 조회하고 오프라인 결과와 라이선스 고지를 제공하며 결과가 없을 때만 원격 번역 선택을 노출한다."
+    verify: "./gradlew test"
+    artifacts: "NONE"
+    expect: "NONE"
+
+  - description: "로그인 화면 없이 익명 인증과 App Check가 translateProxy 호출 시점에만 연결되고 캐시, quota 잔량과 충전 시간이 공통 화면 상태에 반영된다."
+    verify: "./gradlew test"
+    artifacts: "NONE"
+    expect: "NONE"
+
+  - description: "Android com.friendshipHyun과 iOS com.ao.lingua 앱이 공통 CMP 리더, 모달, 드로어, 로컬 DB 설치와 플랫폼 파일 선택 계약을 사용하도록 빌드 구성이 완성된다."
+    verify: "./gradlew test"
+    artifacts: "NONE"
+    expect: "NONE"
+
+ontology_schema:
+  name: "LinguaMultiplatformApp"
+  description: "공유 리더, 로컬 데이터, 오프라인 사전, 익명 번역 클라이언트와 플랫폼 구성을 나타내는 앱 모델"
+  fields:
+    - name: "document"
+      type: "object"
+      description: "콘텐츠 기반 ID와 앱 내부 복사본을 가진 단일 TXT 문서"
+    - name: "reader_state"
+      type: "object"
+      description: "문장 목록, 현재 인덱스, 검색, 북마크, 번역과 표시 설정"
+    - name: "local_databases"
+      type: "object"
+      description: "쓰기 가능한 reader.db와 읽기 전용 사전 SQLite"
+    - name: "translation_client"
+      type: "object"
+      description: "익명 인증, App Check, 캐시와 quota 화면 상태"
+    - name: "platform_configuration"
+      type: "object"
+      description: "Android와 iOS 식별자, 파일 선택과 App Check 공급자"
+
+evaluation_principles:
+  - name: "feature_completeness"
+    description: "로그인 기능을 제외한 합의된 리더 기능이 CMP에 존재한다."
+    weight: 1.0
+  - name: "cross_platform_consistency"
+    description: "Android와 iOS가 공통 상태와 사용자 흐름을 제공한다."
+    weight: 1.0
+  - name: "offline_and_data_safety"
+    description: "오프라인 읽기와 사전이 동작하고 사용자 데이터가 안전하게 저장된다."
+    weight: 1.0
+  - name: "maintainability"
+    description: "불필요한 추상화와 Flutter의 전역 가변 상태를 이식하지 않는다."
+    weight: 0.8
+
+exit_conditions:
+  - name: "app_outcomes_verified"
+    description: "네 acceptance criterion이 모두 충족된다."
+    criteria: "4개 criterion 모두 검증 통과"
+  - name: "kmp_tests_green"
+    description: "KMP 표준 테스트가 성공한다."
+    criteria: "현재 cwd의 ./gradlew test 종료 코드가 0"
+  - name: "release_gates_recorded"
+    description: "자동 실행에서 제외한 실기기와 스토어 검증이 출시 관문으로 남는다."
+    criteria: "Android 실기기, iOS App Attest 실기기와 스토어 업로드가 미완료 관문으로 명시됨"
+
+brownfield_context:
+  project_type: "brownfield"
+  context_references:
+    - path: "../docs/cmp-kmp-dictionary-plan.md"
+      role: "primary"
+      summary: "사전 구조, 데이터 라이선스와 검증 기준"
+    - path: "../docs/cmp-kmp-feature-matrix.md"
+      role: "primary"
+      summary: "Flutter와 CMP 기능 대조표"
+    - path: "shared"
+      role: "primary"
+      summary: "공통 CMP UI, 상태, 로컬 데이터와 플랫폼 계약"
+    - path: "androidApp"
+      role: "primary"
+      summary: "Android 앱 구성"
+    - path: "iosApp"
+      role: "primary"
+      summary: "iOS 앱 구성"
+  existing_patterns:
+    - "Compose Multiplatform 공통 UI와 불변 화면 상태"
+    - "expect/actual 기반 플랫폼 파일 선택"
+    - "문장 인덱스 기반 리더 상태"
+    - "번들 사전 DB와 쓰기 가능한 reader.db 분리"
+  existing_dependencies:
+    - "Kotlin Multiplatform"
+    - "Compose Multiplatform"
+    - "androidx.sqlite KMP BundledSQLiteDriver"
+    - "Firebase Authentication"
+    - "Firebase App Check"
+    - "Firebase Cloud Functions"
+    - "Kotlin test"
+
+metadata:
+  version: "3.0"
+  generated_at: "2026-09-01T10:20:00Z"
+  ambiguity_score: 0.08
+  interview_id: "current-thread-cmp-kmp-interview-20260901"
+  parent_seed: "cmp-kmp-migration-v2.yaml"
+  split_scope: "lingua_kmp"
+  source_commit: "2244c09"
+
