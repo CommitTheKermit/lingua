@@ -28,7 +28,7 @@ constraints:
   - "KMP 검증은 lingua_kmp를 cwd로 둔 단독 ./gradlew test만 tests_passed 증거로 사용한다."
   - "Functions 검증은 functions를 cwd로 둔 단독 npm test만 tests_passed 증거로 사용한다."
   - "빌드, 기기 실행과 운영 Firebase 확인은 테스트 명령에 결합하지 않고 별도 실행 증거로 남긴다."
-  - "각 실행 슬라이스를 별도 커밋한다."
+  - "Ouroboros가 만든 ooo/<session> 관리 브랜치를 이번 작업의 새 브랜치로 간주하고 다른 브랜치를 만들거나 전환하지 않으며, 각 실행 슬라이스를 그 관리 브랜치에 별도 커밋한다."
 
 acceptance_criteria:
   - description: "TXT를 열면 문장이 안정적으로 분리되고 문장 이동, 자동 재개, 문서 검색, 전체 문장 스크롤 뷰어, 북마크, 사용자 번역 자동 저장, 표시 설정과 CSV 내보내기가 Android와 iOS에서 같은 문장 인덱스 계약으로 동작한다."
@@ -165,16 +165,16 @@ brownfield_context:
     - "Jest"
 
 metadata:
-  version: "1.1"
+  version: "1.2"
   generated_at: "2026-09-01T03:25:39Z"
-  revised_at: "2026-09-01T07:15:00Z"
+  revised_at: "2026-09-01T08:05:00Z"
   ambiguity_score: 0.08
   interview_id: "current-thread-cmp-kmp-interview-20260901"
   qa_iteration: 2
   qa_score: 0.66
   qa_verdict: "revise"
   qa_session_id: "qa-e76ff8c7"
-  revision_reason: "Ouroboros verifier가 KMP 전용 allTests 태스크를 tests_passed 증거로 인정하지 않아 표준 test 진입점으로 변경"
+  revision_reason: "Ouroboros 관리 브랜치 밖으로 전환해 실행 증거 연결이 끊기는 충돌을 제거"
   source_commits:
     - "5491dc8"
     - "e89fafb"
