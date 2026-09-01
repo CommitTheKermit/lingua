@@ -53,7 +53,9 @@ object SentenceSplitter {
     }
 
     private fun isSentenceDot(text: String, dotIndex: Int): Boolean {
-        if (text.getOrNull(dotIndex - 1)?.isDigit() == true && text.getOrNull(dotIndex + 1)?.isDigit() == true) {
+        if (text.getOrNull(dotIndex - 1)?.isLetterOrDigit() == true &&
+            text.getOrNull(dotIndex + 1)?.isLetterOrDigit() == true
+        ) {
             return false
         }
         var start = dotIndex - 1

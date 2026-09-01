@@ -17,6 +17,10 @@ class ReaderTest {
             listOf("Dr. Smith measured 3.14 inches.", "\"Really?\"", "Next."),
             SentenceSplitter.split("Dr. Smith measured 3.14 inches. \"Really?\" Next."),
         )
+        assertEquals(
+            listOf("Visit example.com for details.", "Next sentence."),
+            SentenceSplitter.split("Visit example.com for details. Next sentence."),
+        )
     }
 
     @Test
