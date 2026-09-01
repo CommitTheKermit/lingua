@@ -8,3 +8,9 @@ plugins {
     alias(libs.plugins.kotlinCocoapods) apply false
     alias(libs.plugins.kotlinSerialization) apply false
 }
+
+tasks.register("test") {
+    group = "verification"
+    description = "Runs the shared Android and iOS test suite for Ouroboros verification."
+    dependsOn(":shared:allTests")
+}
