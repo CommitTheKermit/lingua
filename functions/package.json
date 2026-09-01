@@ -1,0 +1,13 @@
+{
+  "name": "lingua-functions",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.js",
+  "engines": {"node": "20"},
+  "scripts": {"test": "jest --runInBand"},
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.0"
+  },
+  "devDependencies": {"jest": "^29.7.0"}
+}
