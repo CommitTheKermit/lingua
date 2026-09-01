@@ -25,8 +25,19 @@ class ReaderTest {
         assertEquals(listOf(0, 2), findSentenceMatches(store.state.sentences, " repeat "))
         store.search("repeat")
         store.moveTo(store.state.searchResults.last())
+        store.toggleViewer()
+        assertTrue(store.state.viewerVisible)
+        assertEquals(2, store.state.index)
+        store.toggleBookmarks()
+        assertTrue(store.state.bookmarksVisible)
+        assertFalse(store.state.viewerVisible)
+        assertEquals(2, store.state.index)
         store.toggleBookmark()
         store.saveUserTranslation("반복, 그리고 \"인용\"")
+        store.toggleSettings()
+        assertTrue(store.state.settingsVisible)
+        assertFalse(store.state.bookmarksVisible)
+        assertEquals(2, store.state.index)
         store.updateDisplayStyle(
             DisplayTarget.USER_TRANSLATION,
             store.state.displaySettings.getValue(DisplayTarget.USER_TRANSLATION).copy(
