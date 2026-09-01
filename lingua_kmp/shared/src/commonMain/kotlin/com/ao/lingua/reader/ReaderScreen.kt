@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,11 +22,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +43,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import com.ao.lingua.translation.QuotaStatus
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
+import kotlin.math.max
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 @Composable
 fun ReaderScreen(
@@ -53,8 +70,52 @@ fun ReaderScreen(
     onToggleSettings: () -> Unit,
     onDisplayStyleChange: (DisplayTarget, DisplayStyle) -> Unit,
     onExportCsv: () -> Unit,
+    onOpenDictionary: (String) -> Unit,
+    quota: QuotaStatus,
     modifier: Modifier = Modifier,
 ) {
+    val drawerState = androidx.compose.material3.rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text("Lingua", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(20.dp))
+                NavigationDrawerItem(
+                    label = { Text("사전 검색") },
+                    selected = false,
+                    onClick = {
+                        onOpenDictionary("")
+                        scope.launch { drawerState.close() }
+                    },
+                )
+                NavigationDrawerItem(
+                    label = { Text("전체 보기") },
+                    selected = state.viewerVisible,
+                    onClick = {
+                        onToggleViewer()
+                        scope.launch { drawerState.close() }
+                    },
+                )
+                NavigationDrawerItem(
+                    label = { Text("북마크") },
+                    selected = state.bookmarksVisible,
+                    onClick = {
+                        onToggleBookmarks()
+                        scope.launch { drawerState.close() }
+                    },
+                )
+                NavigationDrawerItem(
+                    label = { Text("표시 설정") },
+                    selected = state.settingsVisible,
+                    onClick = {
+                        onToggleSettings()
+                        scope.launch { drawerState.close() }
+                    },
+                )
+            }
+        },
+    ) {
     BoxWithConstraints(modifier.fillMaxSize().safeDrawingPadding()) {
         val horizontalPadding = if (maxWidth >= 600.dp) 32.dp else 16.dp
 
@@ -76,6 +137,7 @@ fun ReaderScreen(
                     modifier = Modifier.semantics { heading() },
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { scope.launch { drawerState.open() } }) { Text("메뉴") }
                     OutlinedButton(onClick = onOpenFile) { Text("TXT 열기") }
                     OutlinedButton(onClick = onExportCsv, enabled = state.sentences.isNotEmpty()) { Text("CSV 저장") }
                 }
@@ -134,10 +196,12 @@ fun ReaderScreen(
                     onMoveTo = onMoveTo,
                     onToggleBookmark = onToggleBookmark,
                     onUserTranslationChange = onUserTranslationChange,
+                    onOpenDictionary = onOpenDictionary,
                     modifier = Modifier.weight(1f),
                 )
             }
 
+            QuotaLabel(quota)
             Text(
                 text = state.positionLabel,
                 modifier = Modifier.align(Alignment.CenterHorizontally).semantics {
@@ -153,6 +217,29 @@ fun ReaderScreen(
             }
         }
     }
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun QuotaLabel(quota: QuotaStatus) {
+    var now by remember { mutableLongStateOf(Clock.System.now().toEpochMilliseconds()) }
+    LaunchedEffect(quota.nextRefillAtMs) {
+        while (quota.nextRefillAtMs != null) {
+            now = Clock.System.now().toEpochMilliseconds()
+            delay(1_000)
+        }
+    }
+    val refill = quota.nextRefillAtMs?.let { next ->
+        val seconds = max(0, (next - now + 999) / 1_000)
+        " - 다음 충전 ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+    }.orEmpty()
+    Text(
+        "번역 제한 ${quota.quotaRemaining}/${quota.quotaMax}$refill",
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "번역 quota" },
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable
@@ -161,6 +248,7 @@ private fun ReaderPage(
     onMoveTo: (Int) -> Unit,
     onToggleBookmark: () -> Unit,
     onUserTranslationChange: (String) -> Unit,
+    onOpenDictionary: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val originalStyle = state.displaySettings.getValue(DisplayTarget.ORIGINAL)
@@ -183,6 +271,19 @@ private fun ReaderPage(
         }
         OutlinedButton(onClick = onToggleBookmark, modifier = Modifier.fillMaxWidth()) {
             Text(if (state.isCurrentBookmarked) "북마크 해제" else "현재 문장 북마크")
+        }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            state.currentSentence.split(Regex("\\s+")).filter(String::isNotBlank).forEach { word ->
+                Text(
+                    text = word,
+                    modifier = Modifier.clickable { onOpenDictionary(word) }.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
         OutlinedTextField(
             value = state.currentUserTranslation,

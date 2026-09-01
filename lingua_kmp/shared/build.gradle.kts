@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinCocoapods)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -19,13 +21,23 @@ kotlin {
         }
     }
 
+    cocoapods {
+        version = "1.0"
+        summary = "Lingua shared Compose Multiplatform module"
+        homepage = "https://github.com"
+        ios.deploymentTarget = "15.3"
+        pod("FirebaseAuth")
+        pod("FirebaseFunctions")
+        pod("FirebaseAppCheck")
+    }
+
     androidLibrary {
         namespace = "com.ao.lingua.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         compilerOptions {
-            jvmTarget = JvmTarget.JVM_11
+            jvmTarget = JvmTarget.JVM_17
         }
         androidResources {
             enable = true
@@ -34,6 +46,7 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
+            implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
         }
@@ -45,6 +58,8 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.firebase.auth)
+            implementation(libs.firebase.functions)
 
         }
         commonTest.dependencies {

@@ -5,6 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 object SentenceSplitter {
+    const val VERSION = 2
+
+    private val abbreviations = setOf(
+        "dr", "e.g", "etc", "i.e", "jr", "mr", "mrs", "ms", "prof", "sr", "st", "u.k", "u.s", "vs",
+    )
+
     fun normalize(raw: String): String = raw.replace(Regex("([A-Za-z])’([A-Za-z])")) { match ->
         "${match.groupValues[1]}'${match.groupValues[2]}"
     }.replace("\r\n", "\n").replace('\r', '\n')
@@ -23,8 +29,12 @@ object SentenceSplitter {
         while (index < text.length) {
             when (text[index]) {
                 '.', '!', '?' -> {
+                    if (text[index] == '.' && !isSentenceDot(text, index)) {
+                        index++
+                        continue
+                    }
                     do index++ while (index < text.length && text[index] in ".!?")
-                    while (index < text.length && text[index] in "'’\"”") index++
+                    while (index < text.length && text[index] in "'’\"”)]}") index++
                     add(index)
                 }
 
@@ -40,6 +50,18 @@ object SentenceSplitter {
 
         if (start < text.length) add(text.length)
         return sentences
+    }
+
+    private fun isSentenceDot(text: String, dotIndex: Int): Boolean {
+        if (text.getOrNull(dotIndex - 1)?.isDigit() == true && text.getOrNull(dotIndex + 1)?.isDigit() == true) {
+            return false
+        }
+        var start = dotIndex - 1
+        while (start >= 0 && (text[start].isLetter() || text[start] == '.')) start--
+        val token = text.substring(start + 1, dotIndex).lowercase().trim('.')
+        if (token in abbreviations) return false
+        if (token.length == 1 && token != "i" && token[0].isLetter()) return false
+        return true
     }
 }
 
@@ -154,12 +176,12 @@ class ReaderStore(private val database: ReaderDatabase) {
 
     fun exportCsv(): String = buildString {
         append("sentence_index,source,user_translation\r\n")
-        state.sentences.forEachIndexed { index, sentence ->
+        state.userTranslations.entries.sortedBy { it.key }.forEach { (index, translation) ->
             append(index)
             append(',')
-            append(sentence.csvCell())
+            append(state.sentences[index].csvCell())
             append(',')
-            append(state.userTranslations[index].orEmpty().csvCell())
+            append(translation.csvCell())
             append("\r\n")
         }
     }

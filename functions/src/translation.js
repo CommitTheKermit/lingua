@@ -4,6 +4,11 @@ const MAX_QUOTA = 200;
 const REFILL_AMOUNT = 3;
 const REFILL_INTERVAL_MS = 2 * 60 * 1000;
 const MONTHLY_CAP = 100000;
+const PENDING_TTL_MS = 60 * 1000;
+
+function timestampMs(value) {
+  return value?.toMillis?.() ?? (value instanceof Date ? value.getTime() : value);
+}
 
 function monthKey(nowMs) {
   return new Date(nowMs).toISOString().slice(0, 7);
@@ -16,11 +21,21 @@ function cacheKey({text, sourceLang, targetLang}) {
 }
 
 function quotaAt(data, nowMs) {
-  const lastMs = data.quotaLastTs?.toMillis?.() ?? data.quotaLastTs ?? nowMs;
+  const lastMs = timestampMs(data.quotaLastTs) ?? nowMs;
   const intervals = Math.floor(Math.max(0, nowMs - lastMs) / REFILL_INTERVAL_MS);
   return {
     remaining: Math.min(MAX_QUOTA, (data.quotaRemaining ?? MAX_QUOTA) + intervals * REFILL_AMOUNT),
     lastMs: lastMs + intervals * REFILL_INTERVAL_MS,
+  };
+}
+
+async function getQuotaStatus(db, uid, nowMs = Date.now()) {
+  const snapshot = await db.collection("users").doc(uid).get();
+  const quota = quotaAt(snapshot.exists ? snapshot.data() : {}, nowMs);
+  return {
+    quotaRemaining: quota.remaining,
+    quotaMax: MAX_QUOTA,
+    nextRefillAtMs: quota.remaining < MAX_QUOTA ? quota.lastMs + REFILL_INTERVAL_MS : null,
   };
 }
 
@@ -33,7 +48,11 @@ async function reserve(db, request, uid, reservationId, nowMs) {
     const cacheSnapshot = await transaction.get(cacheRef);
     const cache = cacheSnapshot.exists ? cacheSnapshot.data() : undefined;
     if (cache?.status === "completed") return {kind: "cached", translated: cache.translated};
-    if (cache?.status === "pending") return {kind: "pending", cacheRef};
+    if (cache?.status === "pending") {
+      const createdAt = timestampMs(cache.createdAt);
+      if (createdAt === undefined || nowMs - createdAt < PENDING_TTL_MS) return {kind: "pending", cacheRef};
+      return {kind: "stale", cacheRef, reservationId: cache.reservationId};
+    }
 
     const userSnapshot = await transaction.get(userRef);
     const budgetSnapshot = await transaction.get(budgetRef);
@@ -103,6 +122,10 @@ async function executeTranslation({db, request, uid, translate, now = Date.now, 
     const result = await reserve(db, request, uid, reservationId, now());
     if (result.kind === "cached") return {translated: result.translated, cached: true};
     if (result.kind === "exhausted") return {exhausted: true};
+    if (result.kind === "stale") {
+      await rollback(db, result.cacheRef, result.reservationId, now());
+      continue;
+    }
     if (result.kind === "pending") {
       const translated = await waitForCache(result.cacheRef, wait);
       if (translated !== undefined) return {translated, cached: true};
@@ -121,11 +144,26 @@ async function executeTranslation({db, request, uid, translate, now = Date.now, 
   }
 }
 
+async function cleanupStaleReservations(db, nowMs = Date.now()) {
+  const snapshot = await db.collection("translationCache")
+    .where("status", "==", "pending")
+    .where("createdAt", "<=", new Date(nowMs - PENDING_TTL_MS))
+    .get();
+  const results = await Promise.all(snapshot.docs.map((document) => {
+    const reservation = document.data();
+    return rollback(db, document.ref, reservation.reservationId, nowMs);
+  }));
+  return results.filter(Boolean).length;
+}
+
 module.exports = {
   MAX_QUOTA,
   MONTHLY_CAP,
+  PENDING_TTL_MS,
   cacheKey,
+  cleanupStaleReservations,
   executeTranslation,
+  getQuotaStatus,
   monthKey,
   quotaAt,
   reserve,

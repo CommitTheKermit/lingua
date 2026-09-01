@@ -22,10 +22,21 @@ class ReaderDatabase(fileName: String) {
                 content_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 content TEXT NOT NULL,
-                last_index INTEGER NOT NULL DEFAULT 0
+                last_index INTEGER NOT NULL DEFAULT 0,
+                splitter_version INTEGER NOT NULL DEFAULT ${SentenceSplitter.VERSION}
             )
             """.trimIndent(),
         )
+        val hasSplitterVersion = connection.prepare("PRAGMA table_info(document)").use { statement ->
+            var found = false
+            while (statement.step()) {
+                if (statement.getText(1) == "splitter_version") found = true
+            }
+            found
+        }
+        if (!hasSplitterVersion) {
+            connection.execSQL("ALTER TABLE document ADD COLUMN splitter_version INTEGER NOT NULL DEFAULT 1")
+        }
         connection.execSQL(
             """
             CREATE TABLE IF NOT EXISTS user_translation (
@@ -77,7 +88,10 @@ class ReaderDatabase(fileName: String) {
                 connection.execSQL("DELETE FROM user_translation")
                 connection.execSQL("DELETE FROM document")
                 connection.prepare(
-                    "INSERT INTO document(singleton, content_id, title, content, last_index) VALUES (1, ?, ?, ?, 0)",
+                    """
+                    INSERT INTO document(singleton, content_id, title, content, last_index, splitter_version)
+                    VALUES (1, ?, ?, ?, 0, ${SentenceSplitter.VERSION})
+                    """.trimIndent(),
                 ).use { statement ->
                     statement.bindText(1, id)
                     statement.bindText(2, title)
@@ -91,7 +105,7 @@ class ReaderDatabase(fileName: String) {
 
     fun resume(): ReaderState? {
         val document = connection.prepare(
-            "SELECT content_id, title, content, last_index FROM document WHERE singleton = 1",
+            "SELECT content_id, title, content, last_index, splitter_version FROM document WHERE singleton = 1",
         ).use { statement ->
             if (!statement.step()) return null
             StoredDocument(
@@ -99,11 +113,21 @@ class ReaderDatabase(fileName: String) {
                 title = statement.getText(1),
                 content = statement.getText(2),
                 index = statement.getLong(3).toInt(),
+                splitterVersion = statement.getLong(4).toInt(),
             )
         }
         val sentences = SentenceSplitter.split(document.content)
         val safeIndex = document.index.coerceIn(0, sentences.lastIndex.coerceAtLeast(0))
-        if (safeIndex != document.index) savePosition(document.id, safeIndex)
+        if (safeIndex != document.index || document.splitterVersion != SentenceSplitter.VERSION) {
+            connection.prepare(
+                "UPDATE document SET last_index = ?, splitter_version = ? WHERE singleton = 1 AND content_id = ?",
+            ).use { statement ->
+                statement.bindLong(1, safeIndex.toLong())
+                statement.bindLong(2, SentenceSplitter.VERSION.toLong())
+                statement.bindText(3, document.id)
+                statement.step()
+            }
+        }
 
         return ReaderState(
             documentId = document.id,
@@ -242,5 +266,6 @@ class ReaderDatabase(fileName: String) {
         val title: String,
         val content: String,
         val index: Int,
+        val splitterVersion: Int,
     )
 }

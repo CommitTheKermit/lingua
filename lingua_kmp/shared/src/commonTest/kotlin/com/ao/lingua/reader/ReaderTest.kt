@@ -13,6 +13,10 @@ class ReaderTest {
             listOf("I don't know.", "‘Really?’", "A paragraph without punctuation", "Last line"),
             SentenceSplitter.split("I don’t know. ‘Really?’\r\n\r\nA paragraph without punctuation\n\nLast line"),
         )
+        assertEquals(
+            listOf("Dr. Smith measured 3.14 inches.", "\"Really?\"", "Next."),
+            SentenceSplitter.split("Dr. Smith measured 3.14 inches. \"Really?\" Next."),
+        )
     }
 
     @Test
@@ -54,7 +58,10 @@ class ReaderTest {
         assertEquals(setOf(2), resumed.state.bookmarks)
         assertEquals("반복, 그리고 \"인용\"", resumed.state.currentUserTranslation)
         assertEquals(24f, resumed.state.displaySettings.getValue(DisplayTarget.USER_TRANSLATION).fontSize)
-        assertTrue(resumed.exportCsv().contains("2,\"Repeat.\",\"반복, 그리고 \"\"인용\"\"\""))
+        assertEquals(
+            "sentence_index,source,user_translation\r\n2,\"Repeat.\",\"반복, 그리고 \"\"인용\"\"\"\r\n",
+            resumed.exportCsv(),
+        )
 
         resumed.openDocument("renamed.txt", "Repeat. A \"quoted\" line. Repeat.")
         assertEquals(firstDocumentId, resumed.state.documentId)

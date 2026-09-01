@@ -13,6 +13,9 @@ doc/api/
 
 # dotenv environment variables file
 .env*
+**/google-services.json
+**/GoogleService-Info.plist
+lingua_kmp/shared/shared.podspec
 
 # Python build tools
 __pycache__/

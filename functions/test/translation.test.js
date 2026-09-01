@@ -1,8 +1,10 @@
 const {
   MAX_QUOTA,
   MONTHLY_CAP,
+  PENDING_TTL_MS,
   cacheKey,
   executeTranslation,
+  getQuotaStatus,
   monthKey,
   quotaAt,
 } = require("../src/translation");
@@ -64,6 +66,18 @@ test("quota refills by three every two minutes and never exceeds 200", () => {
   expect(monthKey(Date.parse("2026-01-31T23:59:59Z"))).toBe("2026-01");
 });
 
+test("quota status reports the next refill without mutating stored quota", async () => {
+  const db = new FakeFirestore({
+    "users/anon": {quotaRemaining: 7, quotaLastTs: new Date(nowMs)},
+  });
+  await expect(getQuotaStatus(db, "anon", nowMs)).resolves.toEqual({
+    quotaRemaining: 7,
+    quotaMax: 200,
+    nextRefillAtMs: nowMs + 2 * 60 * 1000,
+  });
+  expect(db.data.get("users/anon").quotaRemaining).toBe(7);
+});
+
 test("a cache hit is returned without translation or quota use", async () => {
   const db = new FakeFirestore({
     [pathFor(request)]: {status: "completed", translated: "안녕하세요"},
@@ -121,6 +135,28 @@ test("concurrent duplicate requests call DeepL and consume quota only once", asy
   expect(translate).toHaveBeenCalledTimes(1);
   expect(db.data.get("users/anon").quotaRemaining).toBe(199);
   expect(db.data.get("meta/translateBudget").count).toBe(1);
+});
+
+test("a stale pending request is refunded before a replacement reserves quota", async () => {
+  const staleRequest = {
+    status: "pending",
+    reservationId: "stale",
+    uid: "anon",
+    month: "2026-01",
+    createdAt: new Date(nowMs - PENDING_TTL_MS),
+  };
+  const db = new FakeFirestore({
+    [pathFor(request)]: staleRequest,
+    "users/anon": {quotaRemaining: 199, quotaLastTs: new Date(nowMs)},
+    "meta/translateBudget": {month: "2026-01", count: 1},
+  });
+
+  await expect(executeTranslation({
+    db, request, uid: "anon", now: () => nowMs, translate: async () => "복구됨",
+  })).resolves.toEqual({translated: "복구됨", quotaRemaining: 199, cached: false});
+  expect(db.data.get("users/anon").quotaRemaining).toBe(199);
+  expect(db.data.get("meta/translateBudget").count).toBe(1);
+  expect(db.data.get(pathFor(request))).toMatchObject({status: "completed", translated: "복구됨"});
 });
 
 test("transactions prevent concurrent requests from exceeding either limit", async () => {
