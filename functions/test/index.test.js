@@ -23,6 +23,10 @@ test("callable enforces App Check in asia-northeast3", () => {
 test("handler accepts only an anonymous Firebase UID", async () => {
   await expect(handleTranslate({data: {text: "Hello"}})).rejects.toMatchObject({code: "unauthenticated"});
   await expect(handleTranslate({
+    auth: {token: {firebase: {sign_in_provider: "anonymous"}}},
+    data: {text: "Hello"},
+  })).rejects.toMatchObject({code: "unauthenticated"});
+  await expect(handleTranslate({
     auth: {uid: "user", token: {firebase: {sign_in_provider: "password"}}},
     data: {text: "Hello"},
   })).rejects.toMatchObject({code: "permission-denied"});
