@@ -8,18 +8,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DictionarySheet(
     state: DictionaryState,
@@ -28,9 +27,13 @@ fun DictionarySheet(
     onSearch: (String) -> Unit,
     onTranslate: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { Button(onClick = onDismiss) { Text("닫기") } },
+        title = { Text(state.query.ifBlank { "영한 사전" }, color = Color(0xFF466F99)) },
+        text = {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("영한 사전", style = MaterialTheme.typography.headlineSmall)
@@ -45,7 +48,7 @@ fun DictionarySheet(
                 Button(onClick = { onSearch(state.query) }, enabled = state.query.isNotBlank()) { Text("검색") }
             }
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(state.entries, key = { "${it.headword}:${it.partOfSpeech}" }) { entry ->
@@ -72,10 +75,8 @@ fun DictionarySheet(
                     }
                 }
             }
-            Text(
-                "출처: 한국어 위키낱말사전 가공 데이터 - CC BY-SA 4.0 - ${metadata.dataVersion}",
-                style = MaterialTheme.typography.labelSmall,
-            )
         }
-    }
+        },
+        dismissButton = { Text("한국어 위키낱말사전 - CC BY-SA 4.0 ${metadata.dataVersion}", style = MaterialTheme.typography.labelSmall) },
+    )
 }
