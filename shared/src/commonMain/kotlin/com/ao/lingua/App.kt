@@ -1,6 +1,7 @@
 package com.ao.lingua
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,7 +52,14 @@ fun App() {
         onDispose { dictionaryStore?.dispose() }
     }
 
-    MaterialTheme {
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = androidx.compose.ui.graphics.Color(0xFF466F99),
+            onPrimary = androidx.compose.ui.graphics.Color.White,
+            surface = androidx.compose.ui.graphics.Color(0xFFF8F9FB),
+            onSurface = androidx.compose.ui.graphics.Color(0xFF202124),
+        ),
+    ) {
         ReaderScreen(
             state = store.state,
             onOpenFile = openFile,
