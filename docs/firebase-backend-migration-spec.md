@@ -42,6 +42,10 @@ Firebase로 대체된 범위는 다음과 같다.
 
 ## 3. Flutter 초기화와 플랫폼 연결
 
+이 절에서 인용하는 `lingua_flutter/...` 경로는 Flutter 원본 기준이다. Flutter 코드는
+`legacy/flutter` 브랜치에 보존되어 있고 그 브랜치에서는 루트 레이아웃이므로,
+`lingua_flutter/lib/...` 경로는 `lib/...`로 읽는다.
+
 앱 시작 순서는 다음 계약을 따른다.
 
 1. `WidgetsFlutterBinding.ensureInitialized()`를 호출한다.

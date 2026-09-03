@@ -3,26 +3,5 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "lingua_flutter",
-            "cwd": "lingua_flutter",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "lingua_flutter (profile mode)",
-            "cwd": "lingua_flutter",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "profile"
-        },
-        {
-            "name": "lingua_flutter (release mode)",
-            "cwd": "lingua_flutter",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "release"
-        }
-    ]
+    "configurations": []
 }

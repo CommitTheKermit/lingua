@@ -25,7 +25,7 @@ METADATA = BuildMetadata(
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLED_DATABASE = (
     ROOT
-    / "lingua_kmp/shared/src/commonMain/composeResources/files/dict/wiktionary_en_ko.db"
+    / "shared/src/commonMain/composeResources/files/dict/wiktionary_en_ko.db"
 )
 BUNDLED_NOTICE = BUNDLED_DATABASE.with_name("NOTICE.txt")
 

@@ -145,6 +145,10 @@ Android와 iOS에 별도 화면을 만들지 않는다. 화면 크기에 따라 
 
 ## 현재 Flutter 구조에서 가져가지 않을 부분
 
+이 절에서 인용하는 `lingua_flutter/...` 경로는 Flutter 원본 기준이다. Flutter 코드는
+`legacy/flutter` 브랜치에 보존되어 있고 그 브랜치에서는 루트 레이아웃이므로,
+`lingua_flutter/lib/...` 경로는 `lib/...`로 읽는다.
+
 ### `ApiUtil`의 책임 집중
 
 `lingua_flutter/lib/util/api/api_util.dart`는 사전 조회, 단어 기록, 사용자 요청, DeepL 호출과
