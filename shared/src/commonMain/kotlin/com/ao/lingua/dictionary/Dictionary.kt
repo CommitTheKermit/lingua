@@ -121,6 +121,10 @@ class DictionaryStore(private val repository: DictionaryRepository) {
         state = state.copy(translating = false, translationError = message)
     }
 
+    fun dismissTranslationError() {
+        state = state.copy(translationError = null)
+    }
+
     fun dispose() = repository.close()
 }
 
