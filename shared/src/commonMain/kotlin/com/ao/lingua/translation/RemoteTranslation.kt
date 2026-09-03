@@ -15,13 +15,6 @@ private data class TranslationRequest(
 )
 
 @Serializable
-data class QuotaStatus(
-    val quotaRemaining: Int = 200,
-    val quotaMax: Int = 200,
-    val nextRefillAtMs: Long? = null,
-)
-
-@Serializable
 data class RemoteTranslation(
     val translated: String,
     val cached: Boolean = false,
@@ -38,14 +31,10 @@ class RemoteTranslationClient {
         return functions.httpsCallable("translateProxy")(TranslationRequest(text.trim())).data()
     }
 
-    suspend fun existingQuota(): QuotaStatus? {
-        if (Firebase.auth.currentUser == null) return null
-        return functions.httpsCallable("quotaStatus")().data()
-    }
 }
 
 fun Throwable.translationMessage(): String = when {
     this is FirebaseFunctionsException && code == FunctionsExceptionCode.RESOURCE_EXHAUSTED ->
-        "번역 quota를 모두 사용했습니다. 충전 후 다시 시도해 주세요."
+        "번역 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
     else -> "번역에 실패했습니다. 네트워크 연결을 확인해 주세요."
 }
