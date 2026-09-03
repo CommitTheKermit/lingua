@@ -89,7 +89,7 @@ private val Line = Color(0xFFE9ECF0)
             if (translationVisible) {
                 Label("번역"); TextPanel("사전에 없는 단어에서만 번역을 요청할 수 있습니다.", machine, Modifier.weight(1f))
                 Label("번역문 입력")
-                OutlinedTextField(state.currentUserTranslation, input, Modifier.fillMaxWidth().weight(.7f).padding(12.dp, 4.dp), placeholder = { Text("직접 번역을 입력하세요.") }, textStyle = style(user), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = user.backgroundColor.color(), unfocusedContainerColor = user.backgroundColor.color(), focusedBorderColor = Blue))
+                OutlinedTextField(state.currentUserTranslation, input, Modifier.fillMaxWidth().weight(.7f).padding(12.dp, 4.dp), placeholder = { Text("직접 번역을 입력하세요.") }, textStyle = style(user))
             }
             FlowRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { state.currentSentence.split(Regex("\\s+")).filter(String::isNotBlank).take(8).forEach { Text(it, Modifier.background(Color(0xFFE7EEF5)).clickable { dictionary(it) }.padding(6.dp), color = Blue, fontSize = 13.sp) } }
         }
