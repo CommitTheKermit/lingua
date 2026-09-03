@@ -122,12 +122,12 @@ fun App() {
 
 @Composable
 private fun SplashScreen() = Box(
-    Modifier.fillMaxSize().background(Color(0xFF4C7399)),
+    Modifier.fillMaxSize().background(Color(0xFF44698F)),
     contentAlignment = Alignment.Center,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         androidx.compose.material3.Text("✒", color = Color.White, fontSize = 76.sp)
         Spacer(Modifier.height(10.dp))
-        androidx.compose.material3.Text("L i n g u a", color = Color.White, fontFamily = FontFamily.Serif, fontSize = 20.sp)
+        androidx.compose.material3.Text("Lingua", color = Color.White, fontFamily = FontFamily.Serif, fontSize = 19.sp, letterSpacing = 9.5.sp)
     }
 }
