@@ -1,18 +1,21 @@
 package com.ao.lingua.dictionary
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -38,12 +41,13 @@ fun DictionarySheet(
         ) {
             Text("영한 사전", style = MaterialTheme.typography.headlineSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                BasicTextField(
                     value = state.query,
                     onValueChange = onSearch,
-                    label = { Text("영어 단어") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f).border(1.dp, Color(0xFF466F99)).background(Color.White).padding(12.dp),
+                    decorationBox = { inner -> Box { if (state.query.isBlank()) Text("영어 단어", color = Color.Gray); inner() } },
                 )
                 Button(onClick = { onSearch(state.query) }, enabled = state.query.isNotBlank()) { Text("검색") }
             }

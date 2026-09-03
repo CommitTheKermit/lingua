@@ -3,6 +3,7 @@ package com.ao.lingua.reader
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -89,7 +90,7 @@ private val Line = Color(0xFFE9ECF0)
             if (translationVisible) {
                 Label("번역"); TextPanel("사전에 없는 단어에서만 번역을 요청할 수 있습니다.", machine, Modifier.weight(1f))
                 Label("번역문 입력")
-                OutlinedTextField(state.currentUserTranslation, input, Modifier.fillMaxWidth().weight(.7f).padding(12.dp, 4.dp), placeholder = { Text("직접 번역을 입력하세요.") }, textStyle = style(user))
+                PlainField(state.currentUserTranslation, input, "직접 번역을 입력하세요.", Modifier.fillMaxWidth().weight(.7f).padding(12.dp, 4.dp), style(user))
             }
             FlowRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { state.currentSentence.split(Regex("\\s+")).filter(String::isNotBlank).take(8).forEach { Text(it, Modifier.background(Color(0xFFE7EEF5)).clickable { dictionary(it) }.padding(6.dp), color = Blue, fontSize = 13.sp) } }
         }
@@ -141,7 +142,8 @@ private fun style(setting: DisplayStyle) = TextStyle(color = setting.textColor.c
 @Composable private fun Number(label: String, value: Float, min: Float, max: Float, step: Float = 1f, set: (Float) -> Unit) = Setting(label) { TextButton({ set((value - step).coerceAtLeast(min)) }) { Text("−", fontSize = 21.sp) }; Text(if (step == 1f) value.toInt().toString() else decimal(value), Modifier.width(38.dp), textAlign = TextAlign.Center); TextButton({ set((value + step).coerceAtMost(max)) }) { Text("+", fontSize = 21.sp) } }
 private fun decimal(value: Float) = "${value.toInt()}.${((value * 10).toInt() % 10)}"
 
-@Composable private fun SearchDialog(state: ReaderState, search: (String) -> Unit, move: (Int) -> Unit, close: () -> Unit) = AlertDialog(onDismissRequest = close, title = { Text("문서 검색", color = Blue) }, confirmButton = { TextButton(close) { Text("닫기") } }, text = { Column { OutlinedTextField(state.searchQuery, search, Modifier.fillMaxWidth(), placeholder = { Text("영단어를 입력해 주세요.") }, singleLine = true); state.searchResults.forEach { index -> Text("${index + 1}. ${state.sentences[index]}", Modifier.fillMaxWidth().clickable { move(index); close() }.padding(vertical = 9.dp)) }; if (state.searchQuery.isNotBlank() && state.searchResults.isEmpty()) Text("검색 결과가 없습니다.") } })
-@Composable private fun JumpDialog(state: ReaderState, move: (Int) -> Unit, close: () -> Unit) { var input by remember { mutableStateOf((state.index + 1).toString()) }; AlertDialog(onDismissRequest = close, title = { Text("${state.index + 1}번째 줄", color = Blue) }, dismissButton = { TextButton(close) { Text("닫기") } }, confirmButton = { TextButton({ input.toIntOrNull()?.minus(1)?.let(move); close() }) { Text("이동") } }, text = { Column { Text(state.currentSentence); OutlinedTextField(input, { input = it.filter(Char::isDigit) }, Modifier.padding(top = 16.dp), label = { Text("줄 번호 / ${state.sentences.size}") }, singleLine = true) } }) }
+@Composable private fun SearchDialog(state: ReaderState, search: (String) -> Unit, move: (Int) -> Unit, close: () -> Unit) = AlertDialog(onDismissRequest = close, title = { Text("문서 검색", color = Blue) }, confirmButton = { TextButton(close) { Text("닫기") } }, text = { Column { PlainField(state.searchQuery, search, "영단어를 입력해 주세요.", Modifier.fillMaxWidth(), TextStyle(fontSize = 16.sp), true); state.searchResults.forEach { index -> Text("${index + 1}. ${state.sentences[index]}", Modifier.fillMaxWidth().clickable { move(index); close() }.padding(vertical = 9.dp)) }; if (state.searchQuery.isNotBlank() && state.searchResults.isEmpty()) Text("검색 결과가 없습니다.") } })
+@Composable private fun JumpDialog(state: ReaderState, move: (Int) -> Unit, close: () -> Unit) { var input by remember { mutableStateOf((state.index + 1).toString()) }; AlertDialog(onDismissRequest = close, title = { Text("${state.index + 1}번째 줄", color = Blue) }, dismissButton = { TextButton(close) { Text("닫기") } }, confirmButton = { TextButton({ input.toIntOrNull()?.minus(1)?.let(move); close() }) { Text("이동") } }, text = { Column { Text(state.currentSentence); PlainField(input, { input = it.filter(Char::isDigit) }, "줄 번호 / ${state.sentences.size}", Modifier.padding(top = 16.dp), TextStyle(fontSize = 16.sp), true) } }) }
+@Composable private fun PlainField(value: String, change: (String) -> Unit, placeholder: String, modifier: Modifier, textStyle: TextStyle, singleLine: Boolean = false) = BasicTextField(value, change, modifier.border(1.dp, Line).background(Color.White).padding(12.dp), textStyle = textStyle, singleLine = singleLine, decorationBox = { inner -> Box { if (value.isBlank()) Text(placeholder, color = Color.Gray); inner() } })
 private fun DisplayTarget.tab() = when (this) { DisplayTarget.ORIGINAL -> "상단"; DisplayTarget.MACHINE_TRANSLATION -> "중단"; DisplayTarget.USER_TRANSLATION -> "하단"; DisplayTarget.VIEWER -> "전체" }
 private fun String.color(fallback: Color = Color.White) = runCatching { Color(removePrefix("#").toULong(16)) }.getOrDefault(fallback)
