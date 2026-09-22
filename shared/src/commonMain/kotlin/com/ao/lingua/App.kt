@@ -40,6 +40,8 @@ import com.ao.lingua.translation.translationMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun App(translationAvailable: Boolean) {
@@ -55,9 +57,11 @@ fun App(translationAvailable: Boolean) {
     val translationClient = remember { RemoteTranslationClient() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(installDictionary) {
-        val bytes = Res.readBytes("files/dict/wiktionary_en_ko.db")
-        val path = installDictionary(bytes, dictionaryFileName(bytes))
-        dictionaryStore = DictionaryStore(DictionaryRepository(path))
+        dictionaryStore = withContext(Dispatchers.Default) {
+            val bytes = Res.readBytes("files/dict/wiktionary_en_ko.db")
+            val path = installDictionary(bytes, dictionaryFileName(bytes))
+            DictionaryStore(DictionaryRepository(path))
+        }
     }
     LaunchedEffect(Unit) {
         delay(750)
@@ -69,10 +73,10 @@ fun App(translationAvailable: Boolean) {
 
     MaterialTheme(
         colorScheme = lightColorScheme(
-            primary = androidx.compose.ui.graphics.Color(0xFF466F99),
+            primary = androidx.compose.ui.graphics.Color(0xFF44698F),
             onPrimary = androidx.compose.ui.graphics.Color.White,
-            surface = androidx.compose.ui.graphics.Color(0xFFF8F9FB),
-            onSurface = androidx.compose.ui.graphics.Color(0xFF202124),
+            surface = androidx.compose.ui.graphics.Color(0xFFF8F9FA),
+            onSurface = androidx.compose.ui.graphics.Color(0xFF181B1E),
         ),
     ) {
         if (showSplash) {

@@ -2,25 +2,32 @@ package com.ao.lingua.dictionary
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+
+private val Blue = Color(0xFF44698F)
+private val White = Color(0xFFF8F9FA)
+private val Line = Color(0xFFDEE2E6)
+private val Ink = Color(0xFF181B1E)
+private val Body = Color(0xFF495057)
+private val Muted = Color(0xFF868E96)
 
 @Composable
 fun DictionarySheet(
@@ -30,57 +37,113 @@ fun DictionarySheet(
     onSearch: (String) -> Unit,
     onTranslate: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { Button(onClick = onDismiss) { Text("닫기") } },
-        title = { Text(state.query.ifBlank { "영한 사전" }, color = Color(0xFF466F99)) },
-        text = {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.width(328.dp).height(680.dp).clip(RoundedCornerShape(5.dp)).background(White),
         ) {
-            Text("영한 사전", style = MaterialTheme.typography.headlineSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                BasicTextField(
-                    value = state.query,
-                    onValueChange = onSearch,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f).border(1.dp, Color(0xFF466F99)).background(Color.White).padding(12.dp),
-                    decorationBox = { inner -> Box { if (state.query.isBlank()) Text("영어 단어", color = Color.Gray); inner() } },
-                )
-                Button(onClick = { onSearch(state.query) }, enabled = state.query.isNotBlank()) { Text("검색") }
-            }
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            Box(
+                Modifier.fillMaxWidth().height(54.dp).border(width = 1.dp, color = Line),
+                contentAlignment = Alignment.Center,
             ) {
-                items(state.entries, key = { "${it.headword}:${it.partOfSpeech}" }) { entry ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("${entry.headword} - ${entry.partOfSpeech}", style = MaterialTheme.typography.titleMedium)
-                            entry.senses.forEach { sense -> Text("${sense.sequence + 1}. ${sense.definition}") }
-                        }
-                    }
-                }
-                if (state.searched && state.entries.isEmpty()) {
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("사전에 없는 단어입니다.")
-                            Button(
-                                onClick = onTranslate,
-                                enabled = !state.translating && state.query.isNotBlank(),
-                            ) { Text(if (state.translating) "번역 중" else "DeepL로 번역") }
-                            state.remoteTranslation?.let {
-                                Text("DeepL 번역 결과", style = MaterialTheme.typography.labelMedium)
-                                Text(it, style = MaterialTheme.typography.titleMedium)
-                            }
-                        }
-                    }
+                Text(
+                    state.query.ifBlank { "영한 사전" },
+                    color = Blue,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+
+            if (state.query.isBlank()) {
+                DictionarySearch(onSearch)
+            } else {
+                DictionaryContents(state, metadata, onTranslate, Modifier.weight(1f))
+            }
+
+            Box(
+                Modifier.fillMaxWidth().height(54.dp).border(width = 1.dp, color = Line).clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("닫기", color = Blue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.DictionarySearch(onSearch: (String) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxWidth().weight(1f).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BasicTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            textStyle = TextStyle(color = Ink, fontSize = 16.sp),
+            modifier = Modifier.fillMaxWidth().height(48.dp).border(1.dp, Line, RoundedCornerShape(4.dp)).padding(horizontal = 12.dp, vertical = 13.dp),
+            decorationBox = { inner -> Box { if (query.isBlank()) Text("영어 단어", color = Muted); inner() } },
+        )
+        Box(
+            Modifier.fillMaxWidth().height(42.dp).background(Blue, RoundedCornerShape(4.dp)).clickable(enabled = query.isNotBlank()) { onSearch(query) },
+            contentAlignment = Alignment.Center,
+        ) { Text("검색", color = White, fontSize = 16.sp, fontWeight = FontWeight.Medium) }
+    }
+}
+
+@Composable
+private fun DictionaryContents(
+    state: DictionaryState,
+    metadata: DictionaryMetadata,
+    onTranslate: () -> Unit,
+    modifier: Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(state.entries.flatMap { entry -> entry.senses.map { sense -> entry to sense } }) { (entry, sense) ->
+            DictionaryCard(entry.partOfSpeech, sense.definition)
+        }
+        if (state.searched && state.entries.isEmpty()) {
+            item {
+                Column(
+                    Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(5.dp)).padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text("사전에 없는 단어입니다.", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("필요한 경우 온라인 번역을 요청할 수 있습니다.", color = Body, fontSize = 16.sp, lineHeight = 23.sp)
+                    Box(
+                        Modifier.fillMaxWidth().height(40.dp).background(if (state.translating) Line else Blue, RoundedCornerShape(4.dp)).clickable(enabled = !state.translating, onClick = onTranslate),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (state.translating) "번역 중" else "DeepL로 번역", color = if (state.translating) Muted else White, fontSize = 14.sp) }
+                    state.remoteTranslation?.let { Text(it, color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium) }
+                    Text("한국어 위키낱말사전 · ${metadata.license}", color = Muted, fontSize = 11.sp)
                 }
             }
         }
-        },
-        dismissButton = { Text("한국어 위키낱말사전 - CC BY-SA 4.0 ${metadata.dataVersion}", style = MaterialTheme.typography.labelSmall) },
-    )
+    }
+}
+
+@Composable
+private fun DictionaryCard(partOfSpeech: String, definition: String) {
+    val headline = definition.substringAfter(')').substringBefore(',').trim().trimEnd('.').ifBlank { definition }
+    Column(
+        Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(5.dp)).padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                headline,
+                modifier = Modifier.weight(1f),
+                color = Ink,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier.height(18.dp).background(Blue, RoundedCornerShape(50)).padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(partOfSpeech, color = White, fontSize = 12.sp, textAlign = TextAlign.Center) }
+        }
+        Text(definition, color = Body, fontSize = 16.sp, lineHeight = 23.sp)
+    }
 }
