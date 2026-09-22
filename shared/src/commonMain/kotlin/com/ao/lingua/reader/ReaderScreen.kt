@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -59,10 +62,10 @@ private val Line = Color(0xFFE9ECF0)
             DrawerItem("읽기 옵션", Icons.Filled.Settings) { onToggleSettings(); scope.launch { drawer.close() } }
             DrawerItem("줄 이동", Icons.Filled.FindInPage) { jump = true; scope.launch { drawer.close() } }
             DrawerItem(if (timerVisible) "타이머 숨기기" else "타이머 보기", Icons.Filled.Timer) { timerVisible = !timerVisible; scope.launch { drawer.close() } }
-            DrawerItem("단어장", Icons.Filled.Search) { onOpenDictionary(""); scope.launch { drawer.close() } }
+            DrawerItem("사전 검색", Icons.Filled.Search) { onOpenDictionary(""); scope.launch { drawer.close() } }
         }
     }) {
-        Surface(modifier.fillMaxSize().safeDrawingPadding(), color = Pale) {
+        Surface(modifier.fillMaxSize().safeDrawingPadding().imePadding(), color = Pale) {
             when {
                 state.settingsVisible -> Settings(state.displaySettings, onToggleSettings, onDisplayStyleChange)
                 state.viewerVisible -> ListScreen("읽기 모드", state.sentences.indices.toList(), state, onMoveTo, onToggleViewer)
@@ -88,14 +91,24 @@ private val Line = Color(0xFFE9ECF0)
         Column(Modifier.weight(1f)) {
             Label("원문", state.positionLabel); TextPanel(state.currentSentence, original, Modifier.weight(if (translationVisible) 1f else 1.7f))
             if (translationVisible) {
-                Label("번역"); TextPanel("사전에 없는 단어에서만 번역을 요청할 수 있습니다.", machine, Modifier.weight(1f))
+                Label("사전 이용 안내"); TextPanel("사전에 없는 단어에서만 번역을 요청할 수 있습니다.", machine, Modifier.weight(1f))
                 Label("번역문 입력")
                 PlainField(state.currentUserTranslation, input, "직접 번역을 입력하세요.", Modifier.fillMaxWidth().weight(.7f).padding(12.dp, 4.dp), style(user))
             }
-            FlowRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { state.currentSentence.split(Regex("\\s+")).filter(String::isNotBlank).take(8).forEach { Text(it, Modifier.background(Color(0xFFE7EEF5)).clickable { dictionary(it) }.padding(6.dp), color = Blue, fontSize = 13.sp) } }
+            key(state.documentId, state.index) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(state.currentSentence.split(Regex("\\s+")).filter(String::isNotBlank)) { word ->
+                        Text(word, Modifier.background(Color(0xFFE7EEF5)).clickable { dictionary(word) }.padding(8.dp), color = Blue, fontSize = 13.sp)
+                    }
+                }
+            }
         }
         Row(Modifier.fillMaxWidth().background(Color.White).padding(16.dp, 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NavButton("이전 줄", Icons.AutoMirrored.Filled.ArrowBack, previous, state.canGoPrevious, Modifier.weight(1f)); NavButton("다음 줄", Icons.AutoMirrored.Filled.ArrowForward, next, state.canGoNext, Modifier.weight(1f)); NavButton("입력", Icons.Filled.TextFields, export, state.userTranslations.isNotEmpty(), Modifier.weight(1f))
+            NavButton("이전 줄", Icons.AutoMirrored.Filled.ArrowBack, previous, state.canGoPrevious, Modifier.weight(1f)); NavButton("다음 줄", Icons.AutoMirrored.Filled.ArrowForward, next, state.canGoNext, Modifier.weight(1f)); NavButton("CSV 저장", Icons.Filled.FileDownload, export, state.userTranslations.isNotEmpty(), Modifier.weight(1f))
         }
     }
 }
@@ -112,7 +125,7 @@ private fun formatElapsed(seconds: Int): String {
     return "${padded(seconds / 60)}:${padded(seconds % 60)}"
 }
 @Composable private fun Label(name: String, tail: String = "") = Row(Modifier.fillMaxWidth().background(Color(0xFFF4F6F8)).padding(16.dp, 7.dp)) { Text(name, color = Color.Gray, fontSize = 14.sp); Spacer(Modifier.weight(1f)); Text(tail, color = Color(0xFF123D67)) }
-@Composable private fun TextPanel(text: String, setting: DisplayStyle, modifier: Modifier) = Box(modifier.fillMaxWidth().background(setting.backgroundColor.color()).padding(16.dp, 10.dp)) { Text(text, style = style(setting)) }
+@Composable private fun TextPanel(text: String, setting: DisplayStyle, modifier: Modifier) = Box(modifier.fillMaxWidth().background(setting.backgroundColor.color()).verticalScroll(rememberScrollState()).padding(16.dp, 10.dp)) { Text(text, style = style(setting)) }
 private fun style(setting: DisplayStyle) = TextStyle(color = setting.textColor.color(Color.Black), fontSize = setting.fontSize.sp, lineHeight = (setting.fontSize * setting.lineHeight).sp, fontFamily = if (setting.fontFamily == "Serif") FontFamily.Serif else FontFamily.Default)
 @Composable private fun NavButton(label: String, icon: ImageVector, action: () -> Unit, enabled: Boolean, modifier: Modifier) = Button(action, modifier.height(38.dp), enabled = enabled, colors = ButtonDefaults.buttonColors(containerColor = Blue)) { Icon(icon, null, Modifier.width(15.dp)); Spacer(Modifier.width(3.dp)); Text(label, fontSize = 12.sp) }
 @Composable private fun DrawerItem(label: String, icon: ImageVector, action: () -> Unit) = Row(Modifier.fillMaxWidth().clickable { action() }.padding(16.dp, 13.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null); Spacer(Modifier.width(10.dp)); Text(label, fontSize = 18.sp) }

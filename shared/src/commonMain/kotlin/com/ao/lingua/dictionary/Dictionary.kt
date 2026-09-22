@@ -86,38 +86,51 @@ data class DictionaryState(
 )
 
 class DictionaryStore(private val repository: DictionaryRepository) {
+    private var nextTranslationId = 0L
+    private var activeTranslation: DictionaryTranslationRequest? = null
     val metadata = repository.metadata()
     var state by mutableStateOf(DictionaryState())
         private set
 
     fun open(query: String = "") {
         state = state.copy(visible = true)
-        if (query.isNotBlank()) search(query)
+        search(query)
     }
 
     fun close() {
-        state = state.copy(visible = false)
+        activeTranslation = null
+        state = state.copy(visible = false, translating = false, translationError = null)
     }
 
     fun search(query: String) {
+        activeTranslation = null
         state = state.copy(
             query = query,
             entries = repository.search(query),
-            searched = true,
+            searched = normalizeDictionaryQuery(query).isNotBlank(),
+            translating = false,
             remoteTranslation = null,
             translationError = null,
         )
     }
 
-    fun beginTranslation() {
+    fun beginTranslation(): DictionaryTranslationRequest? {
+        if (!state.visible || !state.searched || state.entries.isNotEmpty() || state.translating) return null
+        val request = DictionaryTranslationRequest(++nextTranslationId, normalizeDictionaryQuery(state.query))
+        activeTranslation = request
         state = state.copy(translating = true, translationError = null)
+        return request
     }
 
-    fun finishTranslation(translated: String) {
+    fun finishTranslation(request: DictionaryTranslationRequest, translated: String) {
+        if (activeTranslation != request) return
+        activeTranslation = null
         state = state.copy(translating = false, remoteTranslation = translated)
     }
 
-    fun failTranslation(message: String) {
+    fun failTranslation(request: DictionaryTranslationRequest, message: String) {
+        if (activeTranslation != request) return
+        activeTranslation = null
         state = state.copy(translating = false, translationError = message)
     }
 
@@ -125,8 +138,13 @@ class DictionaryStore(private val repository: DictionaryRepository) {
         state = state.copy(translationError = null)
     }
 
-    fun dispose() = repository.close()
+    fun dispose() {
+        activeTranslation = null
+        repository.close()
+    }
 }
+
+data class DictionaryTranslationRequest internal constructor(val id: Long, val query: String)
 
 internal fun dictionaryFileName(bytes: ByteArray): String {
     var hash = 14695981039346656037uL

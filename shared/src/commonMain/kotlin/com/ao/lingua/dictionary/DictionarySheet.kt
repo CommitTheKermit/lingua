@@ -71,7 +71,10 @@ fun DictionarySheet(
                                 onClick = onTranslate,
                                 enabled = !state.translating && state.query.isNotBlank(),
                             ) { Text(if (state.translating) "번역 중" else "DeepL로 번역") }
-                            state.remoteTranslation?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+                            state.remoteTranslation?.let {
+                                Text("DeepL 번역 결과", style = MaterialTheme.typography.labelMedium)
+                                Text(it, style = MaterialTheme.typography.titleMedium)
+                            }
                         }
                     }
                 }

@@ -13,15 +13,17 @@ import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderF
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        FirebaseApp.initializeApp(this)
+        val firebaseApp = FirebaseApp.initializeApp(this)
         val appCheckProvider = if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             DebugAppCheckProviderFactory.getInstance()
         } else {
             PlayIntegrityAppCheckProviderFactory.getInstance()
         }
-        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProvider)
+        if (firebaseApp != null) {
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProvider)
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { App() }
+        setContent { App(translationAvailable = firebaseApp != null) }
     }
 }

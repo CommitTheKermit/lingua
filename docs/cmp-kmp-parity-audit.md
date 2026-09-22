@@ -1,5 +1,7 @@
 # Flutter - KMP/CMP 구현 패리티 감사
 
+> 이 문서는 통합 커밋 `b8f6dfb`의 역사적 감사 기록이다. 현재 구현 상태와 정상화 검증은 `docs/cmp-kmp-feature-matrix.md`와 `docs/normalization-verification.md`를 따른다.
+
 ## 감사 기준
 
 - Flutter 기준은 현 워크트리 커밋 `9fcace6`의 `lib/` 전체다.

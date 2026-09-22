@@ -24,7 +24,7 @@ data class RemoteTranslation(
 )
 
 class RemoteTranslationClient {
-    private val functions = Firebase.functions("asia-northeast3")
+    private val functions by lazy { Firebase.functions("asia-northeast3") }
 
     suspend fun translate(text: String): RemoteTranslation {
         if (Firebase.auth.currentUser == null) Firebase.auth.signInAnonymously()

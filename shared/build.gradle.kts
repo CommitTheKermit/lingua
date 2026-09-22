@@ -26,6 +26,11 @@ kotlin {
         summary = "Lingua shared Compose Multiplatform module"
         homepage = "https://github.com"
         ios.deploymentTarget = "15.3"
+        podfile = project.file("../iosApp/Podfile")
+        framework {
+            baseName = "Shared"
+            isStatic = true
+        }
         pod("FirebaseAuth")
         pod("FirebaseFunctions")
         pod("FirebaseAppCheck")

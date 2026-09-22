@@ -39,9 +39,10 @@ import com.ao.lingua.translation.RemoteTranslationClient
 import com.ao.lingua.translation.translationMessage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 @Composable
-fun App() {
+fun App(translationAvailable: Boolean) {
     val database = rememberReaderDatabase()
     val store = remember(database) { ReaderStore(database) }
     val exportCsv = rememberCsvExporter()
@@ -102,13 +103,21 @@ fun App() {
                     onDismiss = dictionary::close,
                     onSearch = dictionary::search,
                     onTranslate = {
-                        dictionary.beginTranslation()
-                        scope.launch {
-                            runCatching { translationClient.translate(dictionary.state.query) }
-                                .onSuccess { result ->
-                                    dictionary.finishTranslation(result.translated)
+                        dictionary.beginTranslation()?.let { request ->
+                            if (!translationAvailable) {
+                                dictionary.failTranslation(request, "온라인 번역 설정이 준비되지 않았습니다. 오프라인 사전은 계속 사용할 수 있습니다.")
+                                return@let
+                            }
+                            scope.launch {
+                                try {
+                                    val result = translationClient.translate(request.query)
+                                    dictionary.finishTranslation(request, result.translated)
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (failure: Exception) {
+                                    dictionary.failTranslation(request, failure.translationMessage())
                                 }
-                                .onFailure { dictionary.failTranslation(it.translationMessage()) }
+                            }
                         }
                     },
                 )
