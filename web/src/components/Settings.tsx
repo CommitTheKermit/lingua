@@ -22,7 +22,7 @@ export function textStyle(style: DisplayStyle): CSSProperties {
 }
 const targets: { key: DisplayTarget; label: string }[] = [
   { key: "original", label: "원문" },
-  { key: "guide", label: "사전 안내" },
+  { key: "machineTranslation", label: "문장 번역" },
   { key: "translation", label: "번역 입력" },
 ];
 const backgrounds = [

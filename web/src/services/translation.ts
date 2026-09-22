@@ -22,7 +22,7 @@ function configure() {
     !env.VITE_RECAPTCHA_SITE_KEY
   ) {
     throw new Error(
-      "온라인 번역 연결을 준비 중입니다. 오프라인 사전은 계속 사용할 수 있습니다.",
+      "온라인 문장 번역 연결을 준비 중입니다. 오프라인 사전은 계속 사용할 수 있습니다.",
     );
   }
   if (env.DEV && env.VITE_APPCHECK_DEBUG_TOKEN) {
@@ -55,12 +55,12 @@ function configure() {
     ).data;
   };
 }
-export async function translateMissingWord(
+export async function translateSentence(
   text: string,
 ): Promise<TranslationResult> {
   if (!navigator.onLine)
     throw new Error(
-      "오프라인 상태입니다. 인터넷에 연결한 뒤 다시 시도해 주세요.",
+      "오프라인 상태입니다. 인터넷에 연결한 뒤 문장 번역을 다시 시도해 주세요.",
     );
   callTranslation ??= configure();
   try {
@@ -70,7 +70,7 @@ export async function translateMissingWord(
     if (code === "functions/resource-exhausted")
       throw new Error("번역 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
     throw new Error(
-      "번역에 실패했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.",
+      "문장 번역에 실패했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.",
     );
   }
 }

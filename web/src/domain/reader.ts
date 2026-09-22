@@ -68,7 +68,11 @@ export function contentId(content: string): string {
     hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * 1099511628211n);
   return `${bytes.length}-${hash.toString(16)}`;
 }
-export type DisplayTarget = "original" | "guide" | "translation" | "viewer";
+export type DisplayTarget =
+  | "original"
+  | "machineTranslation"
+  | "translation"
+  | "viewer";
 export type DisplayStyle = {
   font: "sans" | "serif" | "mono";
   size: number;
@@ -102,7 +106,7 @@ export function initialReader(): ReaderState {
     document: null,
     settings: {
       original: { ...style },
-      guide: { ...style },
+      machineTranslation: { ...style },
       translation: { ...style },
       viewer: { ...style, size: 17 },
     },

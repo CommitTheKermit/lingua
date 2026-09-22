@@ -1,7 +1,11 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { openDB } from "idb";
-import { initialReader, openDocument } from "../src/domain/reader";
+import {
+  initialReader,
+  openDocument,
+  SPLITTER_VERSION,
+} from "../src/domain/reader";
 import { persistReader, restoreReader } from "../src/services/storage";
 describe("브라우저 저장과 재실행 복원", () => {
   it("문서 위치, 같은 문장별 입력, 책갈피와 설정을 복원한다", async () => {
@@ -33,6 +37,22 @@ describe("브라우저 저장과 재실행 복원", () => {
       version: -1,
       state: "broken",
     });
+    db.close();
+  });
+  it("기존 사전 안내 표시 설정을 문장 번역 설정으로 옮긴다", async () => {
+    const db = await openDB("lingua-reader", 1);
+    const state = initialReader();
+    const settings: Record<string, unknown> = {
+      ...state.settings,
+      guide: { ...state.settings.machineTranslation, size: 23 },
+    };
+    delete settings.machineTranslation;
+    await db.put(
+      "reader",
+      { version: SPLITTER_VERSION, state: { ...state, settings } },
+      "current",
+    );
+    expect((await restoreReader()).settings.machineTranslation.size).toBe(23);
     db.close();
   });
 });

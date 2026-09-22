@@ -26,6 +26,8 @@ import {
   SearchDialog,
 } from "./components/ReaderDialogs";
 import { Viewer } from "./components/Viewer";
+import type { SentenceTranslationKey } from "./services/machineTranslation";
+import { useCurrentSentenceTranslation } from "./useCurrentSentenceTranslation";
 import type { TranslationResult } from "./services/translation";
 
 type DialogName = "search" | "bookmarks" | "settings" | "jump" | "menu" | null;
@@ -35,7 +37,7 @@ export default function App() {
   const [dialog, setDialog] = useState<DialogName>(null);
   const [dictionary, setDictionary] = useState<string | null>(null);
   const [viewer, setViewer] = useState(false);
-  const [showGuide, setShowGuide] = useState(true);
+  const [translationVisible, setTranslationVisible] = useState(true);
   const [showInput, setShowInput] = useState(true);
   const [fileError, setFileError] = useState("");
   const [opening, setOpening] = useState(false);
@@ -86,6 +88,22 @@ export default function App() {
     scrollRequest.current = index;
     reader.navigate(index);
   }
+  const sentenceTranslationKey: SentenceTranslationKey | null = doc
+    ? {
+        documentId: doc.id,
+        sentenceIndex: doc.index,
+        sentence: doc.sentences[doc.index],
+      }
+    : null;
+  const currentSentenceTranslation = useCurrentSentenceTranslation(
+    sentenceTranslationKey,
+    !!sentenceTranslationKey &&
+      !viewer &&
+      dialog !== "settings" &&
+      translationVisible,
+    setUsage,
+  );
+  const machineTranslation = currentSentenceTranslation.state;
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (
@@ -346,9 +364,9 @@ export default function App() {
                 </button>
                 <button
                   className="icon-button"
-                  aria-label="사전 안내 영역 표시"
-                  aria-pressed={showGuide}
-                  onClick={() => setShowGuide(!showGuide)}
+                  aria-label="문장 번역 영역 표시"
+                  aria-pressed={translationVisible}
+                  onClick={() => setTranslationVisible(!translationVisible)}
                 >
                   <Icon name="translate" />
                 </button>
@@ -522,7 +540,7 @@ export default function App() {
                 />
               ) : (
                 <div
-                  className={`sentence-layout ${!showInput ? "input-hidden" : ""} ${!showGuide ? "guide-hidden" : ""}`}
+                  className={`sentence-layout ${!showInput ? "input-hidden" : ""} ${!translationVisible ? "translation-hidden" : ""}`}
                 >
                   <section className="original-panel reading-panel">
                     <div className="panel-heading">
@@ -554,28 +572,39 @@ export default function App() {
                       <span>{doc.sentences[doc.index].length}자</span>
                     </div>
                   </section>
-                  {showGuide && (
-                    <section className="guide-panel reading-panel">
+                  {translationVisible && (
+                    <section className="machine-translation-panel reading-panel">
                       <div className="panel-heading">
-                        <h2>사전 이용 안내</h2>
-                        <BookOpen size={17} />
+                        <h2>문장 번역</h2>
+                        <span>DeepL · 자동</span>
                       </div>
                       <div
-                        className="guide-copy"
-                        style={textStyle(reader.state.settings.guide)}
+                        className="machine-translation-copy"
+                        style={textStyle(reader.state.settings.machineTranslation)}
+                        aria-live="polite"
+                        aria-busy={machineTranslation.loading}
                       >
-                        <p>
-                          원문이나 아래 단어를 누르면 사전이 열립니다. 사전에
-                          없는 단어는 DeepL 번역을 선택할 수 있습니다.
-                        </p>
+                        {machineTranslation.error ? (
+                          <div className="translation-error" role="alert">
+                            <p>{machineTranslation.error}</p>
+                            <button
+                              className="text-button"
+                              onClick={currentSentenceTranslation.retryCurrentSentence}
+                            >
+                              다시 시도
+                            </button>
+                          </div>
+                        ) : machineTranslation.loading ? (
+                          <p className="translation-loading">
+                            <LoaderCircle className="spin" size={18} />
+                            문장을 번역하고 있습니다
+                          </p>
+                        ) : machineTranslation.translated ? (
+                          <p>{machineTranslation.translated}</p>
+                        ) : (
+                          <p>문장 번역을 준비하고 있습니다</p>
+                        )}
                       </div>
-                      <button
-                        className="text-button"
-                        onClick={() => setDictionary("")}
-                      >
-                        사전 검색
-                        <ChevronRight size={16} />
-                      </button>
                     </section>
                   )}
                   {showInput && (
@@ -737,7 +766,6 @@ export default function App() {
         <Dictionary
           initialQuery={dictionary}
           onClose={() => setDictionary(null)}
-          onUsage={setUsage}
         />
       )}
     </div>

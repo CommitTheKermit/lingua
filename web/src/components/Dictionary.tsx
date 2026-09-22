@@ -6,39 +6,25 @@ import {
   normalizeQuery,
   type DictionaryEntry,
 } from "../services/dictionary";
-import {
-  translateMissingWord,
-  type TranslationResult,
-} from "../services/translation";
 
 export function Dictionary({
   initialQuery,
   onClose,
-  onUsage,
 }: {
   initialQuery: string;
   onClose: () => void;
-  onUsage: (result: TranslationResult) => void;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [entries, setEntries] = useState<DictionaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lookupError, setLookupError] = useState("");
-  const [remote, setRemote] = useState("");
-  const [error, setError] = useState("");
-  const [translating, setTranslating] = useState(false);
   const [retry, setRetry] = useState(0);
   const generation = useRef(0);
-  const activeRequest = useRef(false);
   useEffect(() => {
     const id = ++generation.current;
-    activeRequest.current = false;
     setLoading(true);
     setLookupError("");
     setEntries([]);
-    setRemote("");
-    setError("");
-    setTranslating(false);
     searchDictionary(query)
       .then((result) => {
         if (generation.current === id) {
@@ -60,38 +46,9 @@ export function Dictionary({
   }, [query, retry]);
   function changeQuery(value: string) {
     generation.current++;
-    activeRequest.current = false;
     setQuery(value);
     setLoading(true);
     setEntries([]);
-    setError("");
-    setRemote("");
-  }
-  async function translate() {
-    if (
-      activeRequest.current ||
-      loading ||
-      lookupError ||
-      entries.length ||
-      !normalizeQuery(query)
-    )
-      return;
-    activeRequest.current = true;
-    const id = generation.current;
-    setTranslating(true);
-    setError("");
-    try {
-      const result = await translateMissingWord(normalizeQuery(query));
-      onUsage(result);
-      if (generation.current === id) setRemote(result.translated);
-    } catch (reason) {
-      if (generation.current === id) setError((reason as Error).message);
-    } finally {
-      if (generation.current === id) {
-        activeRequest.current = false;
-        setTranslating(false);
-      }
-    }
   }
   return (
     <Modal title="영한 사전" onClose={onClose} className="dictionary-modal">
@@ -109,7 +66,7 @@ export function Dictionary({
       <div
         className="dictionary-results"
         aria-live="polite"
-        aria-busy={loading || translating}
+        aria-busy={loading}
       >
         {loading ? (
           <div className="lookup-message">
@@ -154,36 +111,8 @@ export function Dictionary({
             <h3 className="headword">{normalizeQuery(query)}</h3>
             <p>사전에 없는 단어입니다.</p>
             <p className="muted">
-              필요한 경우 DeepL로 뜻을 확인할 수 있습니다.
+              문장 번역은 읽기 화면에서 확인할 수 있습니다.
             </p>
-            {remote ? (
-              <article className="remote-result">
-                <span className="part-of-speech">DeepL 번역 결과</span>
-                <p>{remote}</p>
-              </article>
-            ) : (
-              <button
-                className="primary-button"
-                onClick={translate}
-                disabled={translating}
-              >
-                {translating ? (
-                  <>
-                    <LoaderCircle className="spin" size={18} />
-                    번역 중
-                  </>
-                ) : error ? (
-                  "다시 시도"
-                ) : (
-                  "DeepL로 번역"
-                )}
-              </button>
-            )}
-            {error && (
-              <p className="error-message" role="alert">
-                {error}
-              </p>
-            )}
           </div>
         )}
       </div>

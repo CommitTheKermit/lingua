@@ -17,7 +17,17 @@ export async function restoreReader(): Promise<ReaderState> {
     if (!saved) return initialReader();
     if (saved.version !== SPLITTER_VERSION || !saved.state?.settings)
       throw new Error("저장된 읽기 기록을 불러오지 못했습니다.");
-    return saved.state;
+    const settings = saved.state.settings;
+    return {
+      ...saved.state,
+      settings: {
+        ...settings,
+        machineTranslation:
+          settings.machineTranslation ??
+          settings.guide ??
+          initialReader().settings.machineTranslation,
+      },
+    };
   } finally {
     db.close();
   }
