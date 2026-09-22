@@ -25,10 +25,10 @@
 | 북마크 | 구현됨 | 문서별 인덱스 저장과 UI 회수 | 구현 완료 | 문서 ID와 문장 인덱스로 `reader.db`에 저장 |
 | 오프라인 영한 사전 | 서버 호출 중심 | 위키낱말사전 SQLite와 생성기 회수 | 플랫폼 코드로 이식 | 공통 UI와 상태, 플랫폼 SQLite 드라이버 사용 |
 | 사전 활용형 조회 | 없음 | DB 생성 시 lookup 키로 검증 | commonMain으로 이식 | 런타임 형태소 분석은 추가하지 않음 |
-| 사전 누락 DeepL 보완 | 구현됨 | `translateProxy` 호출 구현 | 클라이언트·서버 구현 | 사용자 요청 시 익명 인증 후 호출. 실제 서비스 연결은 별도 검증 |
+| 사전 누락 DeepL 보완 | 구현됨 | `translateProxy` 호출 구현 | 클라이언트·서버 구현 | 사용자 요청 시 익명 인증 후 호출. Android debug 환경에서 실제 서비스 성공 검증 |
 | 로그인, 회원가입, 계정 복구 | 구현됨 | 익명 인증과 Firebase Auth 코드 존재 | 의도적으로 제외 | 앱은 로그인 없이 사용 가능해야 함 |
 | 사용자별 번역 quota 표시 | 구현됨 | Firestore 기반 구현 존재 | 구현 완료 | 첫 성공 응답 전 `확인 전`, 이후 `translateProxy` 응답의 사용량과 한도를 표시 |
-| Firebase App Check | 일부 구현 | debug와 release 공급자 회수 | 플랫폼 코드로 이식 | 온라인 번역을 다시 연결할 때만 도입 |
+| Firebase App Check | 일부 구현 | debug와 release 공급자 회수 | 플랫폼 코드로 이식 | Android debug token 검증 완료. release Play Integrity 실기기 검증은 남음 |
 
 ## 이식 우선순위
 
