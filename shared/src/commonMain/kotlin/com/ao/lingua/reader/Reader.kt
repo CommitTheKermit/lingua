@@ -147,6 +147,12 @@ class ReaderStore(private val database: ReaderDatabase) {
         )
     }
 
+    fun removeBookmark(sentenceIndex: Int) {
+        if (sentenceIndex !in state.bookmarks) return
+        database.setBookmark(state.documentId, sentenceIndex, false)
+        state = state.copy(bookmarks = state.bookmarks - sentenceIndex)
+    }
+
     fun saveUserTranslation(text: String) {
         if (state.sentences.isEmpty()) return
         database.saveUserTranslation(state.documentId, state.index, text)
@@ -169,7 +175,7 @@ class ReaderStore(private val database: ReaderDatabase) {
     }
 
     fun toggleBookmarks() {
-        state = state.copy(bookmarksVisible = !state.bookmarksVisible, viewerVisible = false, settingsVisible = false)
+        state = state.copy(bookmarksVisible = !state.bookmarksVisible, settingsVisible = false)
     }
 
     fun toggleSettings() {

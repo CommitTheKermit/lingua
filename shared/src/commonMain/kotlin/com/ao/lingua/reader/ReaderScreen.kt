@@ -20,6 +20,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -30,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import lingua.shared.generated.resources.Res
@@ -52,13 +57,14 @@ private val Ink = Color(0xFF181B1E)
 
 @Composable fun ReaderScreen(
     state: ReaderState, onOpenFile: () -> Unit, onPrevious: () -> Unit, onNext: () -> Unit,
-    onMoveTo: (Int) -> Unit, onSearch: (String) -> Unit, onToggleViewer: () -> Unit,
+    onMoveTo: (Int) -> Unit, onToggleViewer: () -> Unit,
     onToggleBookmarks: () -> Unit, onToggleBookmark: () -> Unit, onUserTranslationChange: (String) -> Unit,
+    onRemoveBookmark: (Int) -> Unit,
     onToggleSettings: () -> Unit, onDisplayStyleChange: (DisplayTarget, DisplayStyle) -> Unit,
     onExportCsv: () -> Unit, onOpenDictionary: (String) -> Unit, modifier: Modifier = Modifier,
 ) {
     val drawer = rememberDrawerState(DrawerValue.Closed); val scope = rememberCoroutineScope()
-    var search by remember { mutableStateOf(false) }; var jump by remember { mutableStateOf(false) }
+    var jump by remember { mutableStateOf(false) }
     var translationVisible by remember { mutableStateOf(true) }
     var timerVisible by remember { mutableStateOf(false) }
     var elapsedSeconds by remember { mutableStateOf(0) }
@@ -69,39 +75,38 @@ private val Ink = Color(0xFF181B1E)
         }
     }
     ModalNavigationDrawer(drawerState = drawer, drawerContent = {
-        ModalDrawerSheet(Modifier.width(258.dp), drawerContainerColor = Color.White) {
-            Row(Modifier.fillMaxWidth().height(48.dp).background(Blue).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("✒ Lingua", color = Color.White, fontSize = 18.sp, modifier = Modifier.weight(1f)); IconButton({ scope.launch { drawer.close() } }) { Icon(Icons.Filled.Close, "닫기", tint = Color.White) }
+        ModalDrawerSheet(Modifier.width(257.dp), drawerContainerColor = White) {
+            Row(Modifier.fillMaxWidth().height(45.dp).background(Blue).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("✒ L i n g u a", color = White, fontFamily = FontFamily.Serif, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                IconButton({ scope.launch { drawer.close() } }, Modifier.size(32.dp)) { Icon(Icons.Filled.Close, "닫기", tint = White, modifier = Modifier.size(18.dp)) }
             }
             DrawerItem("파일 열기", Icons.Filled.FileOpen) { onOpenFile(); scope.launch { drawer.close() } }
-            DrawerItem("전체 보기", Icons.Filled.Article) { onToggleViewer(); scope.launch { drawer.close() } }
-            DrawerItem("책갈피", Icons.Filled.BookmarkBorder) { onToggleBookmarks(); scope.launch { drawer.close() } }
+            DrawerItem("읽기 모드", Icons.Filled.Article) { onToggleViewer(); scope.launch { drawer.close() } }
             DrawerItem("읽기 옵션", Icons.Filled.Settings) { onToggleSettings(); scope.launch { drawer.close() } }
             DrawerItem("줄 이동", Icons.Filled.FindInPage) { jump = true; scope.launch { drawer.close() } }
-            DrawerItem(if (timerVisible) "타이머 숨기기" else "타이머 보기", Icons.Filled.Timer) { timerVisible = !timerVisible; scope.launch { drawer.close() } }
-            DrawerItem("사전 검색", Icons.Filled.Search) { onOpenDictionary(""); scope.launch { drawer.close() } }
+            DrawerItem("단어장", Icons.Filled.BookmarkBorder) { onToggleBookmarks(); scope.launch { drawer.close() } }
         }
     }) {
         Surface(modifier.fillMaxSize().safeDrawingPadding().imePadding(), color = Pale) {
             when {
                 state.settingsVisible -> Settings(state.displaySettings, onToggleSettings, onDisplayStyleChange)
-                state.viewerVisible -> ListScreen("읽기 모드", state.sentences.indices.toList(), state, onMoveTo, onToggleViewer)
-                state.bookmarksVisible -> ListScreen("책갈피", state.bookmarks.sorted(), state, onMoveTo, onToggleBookmarks)
-                else -> Home(state, onOpenFile, onPrevious, onNext, onToggleBookmark, onUserTranslationChange, onOpenDictionary, onExportCsv, { scope.launch { drawer.open() } }, { search = true }, translationVisible, { translationVisible = !translationVisible }, timerVisible, elapsedSeconds)
+                state.viewerVisible -> ViewerScreen(state, onToggleViewer, onToggleBookmarks, onToggleBookmark, onToggleSettings)
+                else -> Home(state, onOpenFile, onPrevious, onNext, onUserTranslationChange, onOpenDictionary, onExportCsv, { scope.launch { drawer.open() } }, { onOpenDictionary("") }, translationVisible, { translationVisible = !translationVisible }, timerVisible, elapsedSeconds, { timerVisible = !timerVisible })
             }
         }
     }
-    if (search) SearchDialog(state, onSearch, onMoveTo) { search = false }
     if (jump) JumpDialog(state, onMoveTo) { jump = false }
+    if (state.bookmarksVisible) BookmarkDialog(state, onMoveTo, onRemoveBookmark, onToggleBookmarks)
 }
 
 @Composable private fun Home(
     state: ReaderState, onOpenFile: () -> Unit, previous: () -> Unit, next: () -> Unit,
-    bookmark: () -> Unit, input: (String) -> Unit, dictionary: (String) -> Unit, export: () -> Unit,
+    input: (String) -> Unit, dictionary: (String) -> Unit, export: () -> Unit,
     menu: () -> Unit, search: () -> Unit, translationVisible: Boolean,
-    toggleTranslation: () -> Unit, timerVisible: Boolean, elapsedSeconds: Int,
+    toggleTranslation: () -> Unit, timerVisible: Boolean, elapsedSeconds: Int, toggleTimer: () -> Unit,
 ) = Column(Modifier.fillMaxSize()) {
-    TopBar(state.title.ifBlank { "파일을 선택해 주세요." }, menu, search, bookmark, toggleTranslation)
+    val inputFocusRequester = remember { FocusRequester() }
+    TopBar(state.title.ifBlank { "파일을 선택해 주세요." }, menu, search, { inputFocusRequester.requestFocus() }, toggleTranslation)
     Spacer(Modifier.height(4.dp))
     val original = state.displaySettings.getValue(DisplayTarget.ORIGINAL)
     val machine = state.displaySettings.getValue(DisplayTarget.MACHINE_TRANSLATION)
@@ -120,13 +125,13 @@ private val Ink = Color(0xFF181B1E)
     Spacer(Modifier.height(4.dp))
     ReaderPanel("번역문 입력", modifier = Modifier.height(107.dp)) {
         if (state.sentences.isNotEmpty()) {
-            PlainField(state.currentUserTranslation, input, "", Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 6.dp), style(user))
+            PlainField(state.currentUserTranslation, input, "", Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 6.dp).focusRequester(inputFocusRequester), style(user))
         }
     }
     Spacer(Modifier.height(4.dp))
     WordStrip(state.currentSentence, dictionary)
     Spacer(Modifier.height(4.dp))
-    StatusStrip(timerVisible, elapsedSeconds)
+    StatusStrip(timerVisible, elapsedSeconds, toggleTimer)
     Spacer(Modifier.weight(1f))
     BottomControls(previous, next, export, state.canGoPrevious, state.canGoNext, state.userTranslations.isNotEmpty())
 }
@@ -173,11 +178,13 @@ private val Ink = Color(0xFF181B1E)
     }
 }
 
-@Composable private fun StatusStrip(timerVisible: Boolean, elapsedSeconds: Int) = Row(
-    Modifier.fillMaxWidth().height(36.dp).background(White).padding(horizontal = 16.dp),
+@Composable private fun StatusStrip(timerVisible: Boolean, elapsedSeconds: Int, toggleTimer: () -> Unit) = Row(
+    Modifier.fillMaxWidth().height(36.dp).background(White).clickable(onClick = toggleTimer).padding(horizontal = 16.dp),
     verticalAlignment = Alignment.CenterVertically,
 ) {
-    Text(if (timerVisible) "번역 제한 시간" else "기기 번역 콜 제한", color = Muted, fontSize = 14.sp)
+    if (timerVisible) Icon(Icons.Filled.Timer, null, tint = DarkBlue, modifier = Modifier.size(18.dp))
+    if (timerVisible) Spacer(Modifier.width(6.dp))
+    Text(if (timerVisible) "번역 제한 시간" else "기기 번역 콜 제한", color = if (timerVisible) DarkBlue else Muted, fontSize = 14.sp)
     Spacer(Modifier.weight(1f))
     Text(if (timerVisible) formatElapsed(elapsedSeconds) else "0/200", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
 }
@@ -207,35 +214,170 @@ private fun formatElapsed(seconds: Int): String {
 }
 @Composable private fun TextPanel(text: String, setting: DisplayStyle, modifier: Modifier) = Box(modifier.fillMaxWidth().background(setting.backgroundColor.color()).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Text(text, style = style(setting)) }
 private fun style(setting: DisplayStyle) = TextStyle(color = setting.textColor.color(Color.Black), fontSize = setting.fontSize.sp, lineHeight = (setting.fontSize * setting.lineHeight).sp, fontFamily = if (setting.fontFamily == "Serif") FontFamily.Serif else FontFamily.Default)
-@Composable private fun DrawerItem(label: String, icon: ImageVector, action: () -> Unit) = Row(Modifier.fillMaxWidth().clickable { action() }.padding(16.dp, 13.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null); Spacer(Modifier.width(10.dp)); Text(label, fontSize = 18.sp) }
+@Composable private fun DrawerItem(label: String, icon: ImageVector, action: () -> Unit) = Row(Modifier.fillMaxWidth().height(56.dp).clickable { action() }.padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.size(20.dp), tint = Ink); Spacer(Modifier.width(8.dp)); Text(label, color = Ink, fontSize = 18.sp) }
 
-@Composable private fun ListScreen(title: String, indexes: List<Int>, state: ReaderState, move: (Int) -> Unit, close: () -> Unit) = Column(Modifier.fillMaxSize()) {
-    TitleBar(title, close)
-    if (indexes.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(if (title == "책갈피") "저장한 책갈피가 없습니다." else "문장이 없습니다.") }
-    else { val setting = state.displaySettings.getValue(DisplayTarget.VIEWER); LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { items(indexes, key = { it }) { index -> Text(state.sentences[index], Modifier.fillMaxWidth().clickable { move(index); close() }.padding(vertical = 4.dp), style = style(setting)) } } }
+@Composable private fun ViewerScreen(
+    state: ReaderState,
+    close: () -> Unit,
+    openBookmarks: () -> Unit,
+    toggleBookmark: () -> Unit,
+    openSettings: () -> Unit,
+) = Column(Modifier.fillMaxSize().background(White)) {
+    Row(
+        Modifier.fillMaxWidth().height(48.dp).border(width = 1.dp, color = Line).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", Modifier.size(22.dp).clickable(onClick = close), tint = Blue)
+        Text(state.title, Modifier.weight(1f), color = DarkBlue, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Icon(if (state.isCurrentBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, "책갈피", Modifier.size(22.dp).clickable(onClick = toggleBookmark), tint = Blue)
+        Spacer(Modifier.width(18.dp))
+        Icon(Icons.Filled.Timer, "현재 위치", Modifier.size(22.dp), tint = Blue)
+        Spacer(Modifier.width(18.dp))
+        Icon(Icons.Filled.Settings, "읽기 옵션", Modifier.size(22.dp).clickable(onClick = openSettings), tint = Blue)
+    }
+    Text(
+        state.sentences.joinToString("\n"),
+        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        style = style(state.displaySettings.getValue(DisplayTarget.VIEWER)),
+    )
+    Column(Modifier.fillMaxWidth().height(96.dp).background(White).border(width = 1.dp, color = Line).padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.BookmarkBorder, null, Modifier.size(20.dp), tint = Blue)
+            Spacer(Modifier.width(6.dp))
+            Text("현재 문서내 책갈피 ${state.bookmarks.size}개", Modifier.weight(1f), color = DarkBlue, fontSize = 14.sp)
+            Text("책갈피 목록 ›", Modifier.clickable(onClick = openBookmarks), color = DarkBlue, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("☰", color = Muted, fontSize = 20.sp)
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.weight(1f).height(7.dp).background(Line, RoundedCornerShape(4.dp))) {
+                val fraction = if (state.sentences.isEmpty()) 0f else (state.index + 1f) / state.sentences.size
+                Box(Modifier.fillMaxHeight().fillMaxWidth(fraction).background(Blue, RoundedCornerShape(4.dp)))
+            }
+            Spacer(Modifier.width(14.dp))
+            Text(state.positionLabel, color = DarkBlue, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+        }
+    }
 }
+
+@Composable private fun BookmarkDialog(
+    state: ReaderState,
+    move: (Int) -> Unit,
+    remove: (Int) -> Unit,
+    close: () -> Unit,
+) = Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Column(Modifier.width(328.dp).height(680.dp).clip(RoundedCornerShape(5.dp)).background(White)) {
+        Row(Modifier.fillMaxWidth().height(54.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.BookmarkBorder, null, Modifier.size(24.dp), tint = Blue)
+            Spacer(Modifier.width(6.dp))
+            Text("책갈피 목록", color = Blue, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+        LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.bookmarks.isEmpty()) item { Text("저장한 책갈피가 없습니다.", Modifier.fillMaxWidth().padding(top = 24.dp), color = Muted, textAlign = TextAlign.Center) }
+            items(state.bookmarks.sorted(), key = { it }) { index ->
+                Column(Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(5.dp)).padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.BookmarkBorder, null, Modifier.size(22.dp), tint = Blue)
+                        Spacer(Modifier.width(8.dp))
+                        Text("${index + 1}번째 줄", Modifier.weight(1f), color = BodyColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        SmallAction("이동", Blue, White) { move(index); close() }
+                        Spacer(Modifier.width(4.dp))
+                        SmallAction("삭제", Color.Red, Color.Red, outlined = true) { remove(index) }
+                    }
+                    Text(state.sentences.getOrNull(index).orEmpty(), color = Ink, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    state.userTranslations[index]?.let { Text(it, color = Ink, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(54.dp).border(width = 1.dp, color = Line).clickable(onClick = close), contentAlignment = Alignment.Center) {
+            Text("닫기", color = Blue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+private val BodyColor = Color(0xFF495057)
+
+@Composable private fun SmallAction(label: String, background: Color, content: Color, outlined: Boolean = false, action: () -> Unit) = Box(
+    Modifier.height(24.dp).then(if (outlined) Modifier.border(1.dp, background, RoundedCornerShape(4.dp)) else Modifier.background(background, RoundedCornerShape(4.dp))).clickable(onClick = action).padding(horizontal = 8.dp),
+    contentAlignment = Alignment.Center,
+) { Text(label, color = content, fontSize = 12.sp) }
 @Composable private fun TitleBar(title: String, back: () -> Unit) = Row(Modifier.fillMaxWidth().height(48.dp).background(Color.White).border(1.dp, Line), verticalAlignment = Alignment.CenterVertically) { IconButton(back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로") }; Text(title, Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 18.sp); Spacer(Modifier.width(48.dp)) }
 
 @Composable private fun Settings(settings: Map<DisplayTarget, DisplayStyle>, close: () -> Unit, change: (DisplayTarget, DisplayStyle) -> Unit) {
     var target by remember { mutableStateOf(DisplayTarget.ORIGINAL) }; val value = settings.getValue(target)
-    Column(Modifier.fillMaxSize()) {
-        TitleBar("읽기 옵션", close)
-        Row(Modifier.fillMaxWidth()) { listOf(DisplayTarget.ORIGINAL, DisplayTarget.MACHINE_TRANSLATION, DisplayTarget.USER_TRANSLATION, DisplayTarget.VIEWER).forEach { item -> TextButton({ target = item }, Modifier.weight(1f).height(52.dp)) { Text(item.tab(), Modifier.fillMaxSize().background(if (item == target) Blue else Color.Transparent).padding(top = 13.dp), textAlign = TextAlign.Center, color = if (item == target) Color.White else Color.DarkGray) } } }
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("설정 미리보기", color = Color.Gray, fontSize = 14.sp); Text("적용 예시입니다.\n각 칸별 설정이 가능합니다.", style = style(value)); HorizontalDivider(color = Line); Text("폰트 설정", color = Color.Gray, fontSize = 14.sp)
-            Setting("폰트 선택") { TextButton({ change(target, value.copy(fontFamily = if (value.fontFamily == "Default") "Serif" else "Default")) }) { Text(if (value.fontFamily == "Default") "Noto Sans⌄" else "Serif⌄") } }
-            Palette("배경색", value.backgroundColor) { change(target, value.copy(backgroundColor = it)) }; Palette("폰트색", value.textColor) { change(target, value.copy(textColor = it)) }; HorizontalDivider(color = Line); Text("본문 설정", color = Color.Gray, fontSize = 14.sp)
-            Number("글자 크기", value.fontSize, 12f, 40f) { change(target, value.copy(fontSize = it)) }; Number("줄 간격", value.lineHeight, 1f, 2.5f, .1f) { change(target, value.copy(lineHeight = it)) }
+    Column(Modifier.fillMaxSize().background(Pale)) {
+        Row(Modifier.fillMaxWidth().height(48.dp).background(White).border(width = 1.dp, color = Line).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "뒤로", Modifier.size(22.dp).clickable(onClick = close), tint = Ink)
+            Text("읽기 옵션", Modifier.weight(1f), color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("저장", Modifier.clickable(onClick = close), color = Blue, fontSize = 16.sp)
+        }
+        Row(Modifier.fillMaxWidth().height(54.dp).background(White)) {
+            listOf(DisplayTarget.ORIGINAL, DisplayTarget.MACHINE_TRANSLATION, DisplayTarget.USER_TRANSLATION).forEach { item ->
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().background(if (item == target) Blue else White).border(width = 0.5.dp, color = Line).clickable { target = item },
+                    contentAlignment = Alignment.Center,
+                ) { Text(item.tab(), color = if (item == target) White else BodyColor, fontSize = 16.sp) }
+            }
+        }
+        Text("설정 미리보기", Modifier.fillMaxWidth().height(40.dp).background(White).padding(horizontal = 16.dp, vertical = 11.dp), color = Muted, fontSize = 12.sp)
+        Box(Modifier.fillMaxWidth().height(208.dp).background(value.backgroundColor.color()).padding(16.dp)) {
+            Text("적용 예시입니다.\n각 칸별 설정이 가능합니다.\n\nThis is an application example.\nEach column can be set", style = style(value))
+        }
+        Text("폰트 설정", Modifier.fillMaxWidth().height(40.dp).background(White).padding(horizontal = 16.dp, vertical = 11.dp), color = Muted, fontSize = 12.sp)
+        Column(Modifier.fillMaxWidth().background(White).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Setting("폰트 선택") {
+                Box(Modifier.width(240.dp).height(44.dp).border(1.dp, Line, RoundedCornerShape(5.dp)).clickable { change(target, value.copy(fontFamily = if (value.fontFamily == "Default") "Serif" else "Default")) }.padding(horizontal = 15.dp), contentAlignment = Alignment.CenterStart) {
+                    Text(if (value.fontFamily == "Default") "Noto Sans" else "Serif", color = Ink, fontSize = 16.sp)
+                    Text("⌄", Modifier.align(Alignment.CenterEnd), color = Muted)
+                }
+            }
+            Palette("배경색", value.backgroundColor) { change(target, value.copy(backgroundColor = it)) }
+            Palette("폰트색", value.textColor) { change(target, value.copy(textColor = it)) }
+            Spacer(Modifier.height(2.dp))
+        }
+        Text("본문 설정", Modifier.fillMaxWidth().height(40.dp).background(White).padding(horizontal = 16.dp, vertical = 11.dp), color = Muted, fontSize = 12.sp)
+        Column(Modifier.fillMaxWidth().background(White).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Number("글자 크기", value.fontSize, 12f, 40f) { change(target, value.copy(fontSize = it)) }
+            Number("줄 간격", value.lineHeight, 1f, 2.5f, .1f) { change(target, value.copy(lineHeight = it)) }
         }
     }
 }
 @Composable private fun Setting(label: String, content: @Composable () -> Unit) = Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(label, Modifier.weight(1f), fontSize = 17.sp); content() }
-@Composable private fun Palette(label: String, selected: String, pick: (String) -> Unit) = Setting(label) { listOf("#FFFFFFFF", "#FF4B4B4B", "#FF252525", "#FFECE9E1").forEach { hex -> Box(Modifier.padding(start = 7.dp).width(32.dp).height(28.dp).background(hex.color()).border(if (hex == selected) 2.dp else 0.dp, Blue).clickable { pick(hex) }) } }
-@Composable private fun Number(label: String, value: Float, min: Float, max: Float, step: Float = 1f, set: (Float) -> Unit) = Setting(label) { TextButton({ set((value - step).coerceAtLeast(min)) }) { Text("−", fontSize = 21.sp) }; Text(if (step == 1f) value.toInt().toString() else decimal(value), Modifier.width(38.dp), textAlign = TextAlign.Center); TextButton({ set((value + step).coerceAtMost(max)) }) { Text("+", fontSize = 21.sp) } }
+@Composable private fun Palette(label: String, selected: String, pick: (String) -> Unit) = Setting(label) { listOf("#FFFFFFFF", "#FF4B4B4B", "#FF252525", "#FFECE9E1", "#FFE7D1BD", "#FFC9B683").forEach { hex -> Box(Modifier.padding(start = 6.dp).size(32.dp, 30.dp).background(hex.color(), RoundedCornerShape(4.dp)).border(if (hex == selected) 2.dp else 1.dp, if (hex == selected) Blue else Line, RoundedCornerShape(4.dp)).clickable { pick(hex) }, contentAlignment = Alignment.Center) { if (hex == selected) Text("✓", color = if (hex == "#FFFFFFFF") Ink else White, fontSize = 18.sp) } } }
+@Composable private fun Number(label: String, value: Float, min: Float, max: Float, step: Float = 1f, set: (Float) -> Unit) = Setting(label) { SquareAdjust("−") { set((value - step).coerceAtLeast(min)) }; Text(if (step == 1f) value.toInt().toString() else decimal(value), Modifier.width(64.dp), textAlign = TextAlign.Center); SquareAdjust("+") { set((value + step).coerceAtMost(max)) } }
+@Composable private fun SquareAdjust(label: String, action: () -> Unit) = Box(Modifier.size(20.dp).background(Blue, RoundedCornerShape(5.dp)).clickable(onClick = action), contentAlignment = Alignment.Center) { Text(label, color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
 private fun decimal(value: Float) = "${value.toInt()}.${((value * 10).toInt() % 10)}"
 
 @Composable private fun SearchDialog(state: ReaderState, search: (String) -> Unit, move: (Int) -> Unit, close: () -> Unit) = AlertDialog(onDismissRequest = close, title = { Text("문서 검색", color = Blue) }, confirmButton = { TextButton(close) { Text("닫기") } }, text = { Column { PlainField(state.searchQuery, search, "영단어를 입력해 주세요.", Modifier.fillMaxWidth(), TextStyle(fontSize = 16.sp), true); state.searchResults.forEach { index -> Text("${index + 1}. ${state.sentences[index]}", Modifier.fillMaxWidth().clickable { move(index); close() }.padding(vertical = 9.dp)) }; if (state.searchQuery.isNotBlank() && state.searchResults.isEmpty()) Text("검색 결과가 없습니다.") } })
-@Composable private fun JumpDialog(state: ReaderState, move: (Int) -> Unit, close: () -> Unit) { var input by remember { mutableStateOf((state.index + 1).toString()) }; AlertDialog(onDismissRequest = close, title = { Text("${state.index + 1}번째 줄", color = Blue) }, dismissButton = { TextButton(close) { Text("닫기") } }, confirmButton = { TextButton({ input.toIntOrNull()?.minus(1)?.let(move); close() }) { Text("이동") } }, text = { Column { Text(state.currentSentence); PlainField(input, { input = it.filter(Char::isDigit) }, "줄 번호 / ${state.sentences.size}", Modifier.padding(top = 16.dp), TextStyle(fontSize = 16.sp), true) } }) }
+@Composable private fun JumpDialog(state: ReaderState, move: (Int) -> Unit, close: () -> Unit) {
+    val lastPosition = state.sentences.size.coerceAtLeast(1)
+    var position by remember { mutableFloatStateOf((state.index + 1).toFloat()) }
+    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.width(328.dp).clip(RoundedCornerShape(5.dp)).background(White)) {
+            Box(Modifier.fillMaxWidth().height(54.dp).border(width = 1.dp, color = Line), contentAlignment = Alignment.Center) {
+                Text("${position.toInt()}번째 줄", color = Blue, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("×", Modifier.align(Alignment.CenterEnd).clickable(onClick = close).padding(16.dp), color = Muted, fontSize = 22.sp)
+            }
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(state.sentences.getOrNull(position.toInt() - 1).orEmpty(), color = Ink, fontSize = 16.sp, lineHeight = 23.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Slider(
+                    value = position,
+                    onValueChange = { position = it },
+                    valueRange = 1f..lastPosition.toFloat(),
+                    colors = SliderDefaults.colors(thumbColor = Blue, activeTrackColor = Blue, inactiveTrackColor = Line),
+                )
+                Box(Modifier.align(Alignment.CenterHorizontally).width(128.dp).height(38.dp).border(1.dp, Line, RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
+                    Text("${position.toInt()}", color = DarkBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("/${state.sentences.size}", Modifier.align(Alignment.CenterEnd).padding(end = 9.dp), color = Muted, fontSize = 16.sp)
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(54.dp).border(width = 1.dp, color = Line).clickable { move(position.toInt() - 1); close() }, contentAlignment = Alignment.Center) {
+                Text("이동", color = Blue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
 @Composable private fun PlainField(value: String, change: (String) -> Unit, placeholder: String, modifier: Modifier, textStyle: TextStyle, singleLine: Boolean = false) = BasicTextField(value, change, modifier.border(1.dp, Line).background(Color.White).padding(12.dp), textStyle = textStyle, singleLine = singleLine, decorationBox = { inner -> Box { if (value.isBlank()) Text(placeholder, color = Color.Gray); inner() } })
 private fun DisplayTarget.tab() = when (this) { DisplayTarget.ORIGINAL -> "상단"; DisplayTarget.MACHINE_TRANSLATION -> "중단"; DisplayTarget.USER_TRANSLATION -> "하단"; DisplayTarget.VIEWER -> "전체" }
 private fun String.color(fallback: Color = Color.White) = runCatching {
