@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -37,12 +36,21 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import com.ao.lingua.ui.linguaFontFamily
 import lingua.shared.generated.resources.Res
 import lingua.shared.generated.resources.reader_arrow_left
 import lingua.shared.generated.resources.reader_arrow_right
 import lingua.shared.generated.resources.reader_edit
 import lingua.shared.generated.resources.reader_menu
+import lingua.shared.generated.resources.reader_menu_book
+import lingua.shared.generated.resources.reader_menu_file
+import lingua.shared.generated.resources.reader_menu_logo
+import lingua.shared.generated.resources.reader_menu_move
+import lingua.shared.generated.resources.reader_menu_read
+import lingua.shared.generated.resources.reader_menu_settings
 import lingua.shared.generated.resources.reader_search
+import lingua.shared.generated.resources.reader_timer_off
+import lingua.shared.generated.resources.reader_timer_on
 import lingua.shared.generated.resources.reader_translate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -77,14 +85,15 @@ private val Ink = Color(0xFF181B1E)
     ModalNavigationDrawer(drawerState = drawer, drawerContent = {
         ModalDrawerSheet(Modifier.width(257.dp), drawerContainerColor = White) {
             Row(Modifier.fillMaxWidth().height(45.dp).background(Blue).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("✒ L i n g u a", color = White, fontFamily = FontFamily.Serif, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Image(painterResource(Res.drawable.reader_menu_logo), null, Modifier.size(30.dp, 20.dp))
+                Text("L i n g u a", Modifier.weight(1f).padding(start = 2.dp), color = White, fontFamily = linguaFontFamily(), fontSize = 12.sp)
                 IconButton({ scope.launch { drawer.close() } }, Modifier.size(32.dp)) { Icon(Icons.Filled.Close, "닫기", tint = White, modifier = Modifier.size(18.dp)) }
             }
-            DrawerItem("파일 열기", Icons.Filled.FileOpen) { onOpenFile(); scope.launch { drawer.close() } }
-            DrawerItem("읽기 모드", Icons.Filled.Article) { onToggleViewer(); scope.launch { drawer.close() } }
-            DrawerItem("읽기 옵션", Icons.Filled.Settings) { onToggleSettings(); scope.launch { drawer.close() } }
-            DrawerItem("줄 이동", Icons.Filled.FindInPage) { jump = true; scope.launch { drawer.close() } }
-            DrawerItem("단어장", Icons.Filled.BookmarkBorder) { onToggleBookmarks(); scope.launch { drawer.close() } }
+            DrawerItem("파일 열기", Res.drawable.reader_menu_file) { onOpenFile(); scope.launch { drawer.close() } }
+            DrawerItem("읽기 모드", Res.drawable.reader_menu_read) { onToggleViewer(); scope.launch { drawer.close() } }
+            DrawerItem("읽기 옵션", Res.drawable.reader_menu_settings) { onToggleSettings(); scope.launch { drawer.close() } }
+            DrawerItem("줄 이동", Res.drawable.reader_menu_move) { jump = true; scope.launch { drawer.close() } }
+            DrawerItem("단어장", Res.drawable.reader_menu_book) { onToggleBookmarks(); scope.launch { drawer.close() } }
         }
     }) {
         Surface(modifier.fillMaxSize().safeDrawingPadding().imePadding(), color = Pale) {
@@ -125,7 +134,12 @@ private val Ink = Color(0xFF181B1E)
     Spacer(Modifier.height(4.dp))
     ReaderPanel("번역문 입력", modifier = Modifier.height(107.dp)) {
         if (state.sentences.isNotEmpty()) {
-            PlainField(state.currentUserTranslation, input, "", Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 6.dp).focusRequester(inputFocusRequester), style(user))
+            BasicTextField(
+                value = state.currentUserTranslation,
+                onValueChange = input,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).focusRequester(inputFocusRequester),
+                textStyle = style(user),
+            )
         }
     }
     Spacer(Modifier.height(4.dp))
@@ -142,7 +156,7 @@ private val Ink = Color(0xFF181B1E)
 ) {
     FigmaIcon(Res.drawable.reader_menu, "메뉴", menu)
     Spacer(Modifier.width(13.dp))
-    Text(title, Modifier.weight(1f), color = Blue, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+    Text(title, Modifier.weight(1f), color = Blue, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = linguaFontFamily(), fontSize = 16.sp, fontWeight = FontWeight.Medium)
     FigmaIcon(Res.drawable.reader_edit, "편집", edit)
     Spacer(Modifier.width(16.dp))
     FigmaIcon(Res.drawable.reader_translate, "번역", translate)
@@ -157,8 +171,8 @@ private val Ink = Color(0xFF181B1E)
 )
 
 @Composable private fun ReaderPanel(label: String, tail: String = "", modifier: Modifier, content: @Composable BoxScope.() -> Unit) = Box(modifier.fillMaxWidth().background(White)) {
-    Text(label, Modifier.padding(start = 16.dp, top = 8.dp), color = Muted, fontSize = 14.sp)
-    if (tail.isNotBlank()) Text(tail, Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 8.dp), color = DarkBlue, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    Text(label, Modifier.padding(start = 16.dp, top = 8.dp), color = Muted, fontFamily = linguaFontFamily(), fontSize = 14.sp)
+    if (tail.isNotBlank()) Text(tail, Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 8.dp), color = DarkBlue, fontFamily = linguaFontFamily(), fontSize = 14.sp, fontWeight = FontWeight.Medium)
     Box(Modifier.fillMaxSize().padding(top = 36.dp), content = content)
 }
 
@@ -172,21 +186,35 @@ private val Ink = Color(0xFF181B1E)
             word,
             Modifier.height(32.dp).background(DarkBlue, RoundedCornerShape(4.dp)).clickable { dictionary(word) }.padding(horizontal = 16.dp, vertical = 6.dp),
             color = White,
+            fontFamily = linguaFontFamily(),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
         )
     }
 }
 
-@Composable private fun StatusStrip(timerVisible: Boolean, elapsedSeconds: Int, toggleTimer: () -> Unit) = Row(
-    Modifier.fillMaxWidth().height(36.dp).background(White).clickable(onClick = toggleTimer).padding(horizontal = 16.dp),
-    verticalAlignment = Alignment.CenterVertically,
-) {
-    if (timerVisible) Icon(Icons.Filled.Timer, null, tint = DarkBlue, modifier = Modifier.size(18.dp))
-    if (timerVisible) Spacer(Modifier.width(6.dp))
-    Text(if (timerVisible) "번역 제한 시간" else "기기 번역 콜 제한", color = if (timerVisible) DarkBlue else Muted, fontSize = 14.sp)
-    Spacer(Modifier.weight(1f))
-    Text(if (timerVisible) formatElapsed(elapsedSeconds) else "0/200", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+@Composable private fun StatusStrip(timerVisible: Boolean, elapsedSeconds: Int, toggleTimer: () -> Unit) {
+    if (timerVisible) {
+        Row(Modifier.fillMaxWidth().height(36.dp).background(White).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(Res.drawable.reader_timer_on), null, Modifier.size(24.dp).clickable(onClick = toggleTimer))
+            Spacer(Modifier.width(3.dp))
+            Text("번역 제한 시간", color = DarkBlue, fontFamily = linguaFontFamily(), fontSize = 14.sp)
+            Spacer(Modifier.weight(1f))
+            Text(formatElapsed(elapsedSeconds), color = DarkBlue, fontFamily = linguaFontFamily(), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().height(36.dp).background(Pale), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.width(296.dp).fillMaxHeight().background(White).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("기기 번역 콜 제한", color = Muted, fontFamily = linguaFontFamily(), fontSize = 14.sp)
+                Spacer(Modifier.weight(1f))
+                Text("0/200", color = Ink, fontFamily = linguaFontFamily(), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.width(60.dp).fillMaxHeight().background(White).clickable(onClick = toggleTimer), contentAlignment = Alignment.Center) {
+                Image(painterResource(Res.drawable.reader_timer_off), "타이머", Modifier.size(24.dp))
+            }
+        }
+    }
 }
 
 @Composable private fun BottomControls(previous: () -> Unit, next: () -> Unit, input: () -> Unit, canPrevious: Boolean, canNext: Boolean, canInput: Boolean) = Row(
@@ -204,7 +232,7 @@ private val Ink = Color(0xFF181B1E)
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (icon != null && !iconAfter) Image(painterResource(icon), null, Modifier.size(14.dp))
-        Text(label, color = if (enabled) White else Muted, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = if (enabled) White else Muted, fontFamily = linguaFontFamily(), fontSize = 14.sp, fontWeight = FontWeight.Medium)
         if (icon != null && iconAfter) Image(painterResource(icon), null, Modifier.size(14.dp))
     }
 }
@@ -213,8 +241,8 @@ private fun formatElapsed(seconds: Int): String {
     return "${padded(seconds / 60)}:${padded(seconds % 60)}"
 }
 @Composable private fun TextPanel(text: String, setting: DisplayStyle, modifier: Modifier) = Box(modifier.fillMaxWidth().background(setting.backgroundColor.color()).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Text(text, style = style(setting)) }
-private fun style(setting: DisplayStyle) = TextStyle(color = setting.textColor.color(Color.Black), fontSize = setting.fontSize.sp, lineHeight = (setting.fontSize * setting.lineHeight).sp, fontFamily = if (setting.fontFamily == "Serif") FontFamily.Serif else FontFamily.Default)
-@Composable private fun DrawerItem(label: String, icon: ImageVector, action: () -> Unit) = Row(Modifier.fillMaxWidth().height(56.dp).clickable { action() }.padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.size(20.dp), tint = Ink); Spacer(Modifier.width(8.dp)); Text(label, color = Ink, fontSize = 18.sp) }
+@Composable private fun style(setting: DisplayStyle) = TextStyle(color = setting.textColor.color(Color.Black), fontSize = setting.fontSize.sp, lineHeight = (setting.fontSize * setting.lineHeight).sp, fontFamily = if (setting.fontFamily == "Serif") FontFamily.Serif else linguaFontFamily(), fontWeight = FontWeight.Medium)
+@Composable private fun DrawerItem(label: String, icon: DrawableResource, action: () -> Unit) = Row(Modifier.fillMaxWidth().height(56.dp).clickable { action() }.padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically) { Image(painterResource(icon), null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(label, color = Ink, fontFamily = linguaFontFamily(), fontSize = 18.sp) }
 
 @Composable private fun ViewerScreen(
     state: ReaderState,

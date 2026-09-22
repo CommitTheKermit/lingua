@@ -84,14 +84,14 @@ enum class DisplayTarget {
 
 data class DisplayStyle(
     val fontFamily: String = "Default",
-    val fontSize: Float = 20f,
-    val lineHeight: Float = 1.5f,
-    val textColor: String = "#FF1B1B1F",
-    val backgroundColor: String = "#FFFFFFFF",
+    val fontSize: Float = 18f,
+    val lineHeight: Float = 1.4f,
+    val textColor: String = "#FF181B1E",
+    val backgroundColor: String = "#FFF8F9FA",
 )
 
 internal fun defaultDisplaySettings(): Map<DisplayTarget, DisplayStyle> = DisplayTarget.entries.associateWith {
-    DisplayStyle(fontSize = if (it == DisplayTarget.VIEWER) 17f else 20f)
+    DisplayStyle(fontSize = if (it == DisplayTarget.VIEWER) 17f else 18f)
 }
 
 data class ReaderState(

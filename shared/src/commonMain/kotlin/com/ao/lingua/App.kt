@@ -37,6 +37,7 @@ import com.ao.lingua.reader.rememberTextFilePicker
 import lingua.shared.generated.resources.Res
 import com.ao.lingua.translation.RemoteTranslationClient
 import com.ao.lingua.translation.translationMessage
+import com.ao.lingua.ui.linguaTypography
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
@@ -72,6 +73,7 @@ fun App(translationAvailable: Boolean) {
     }
 
     MaterialTheme(
+        typography = linguaTypography(),
         colorScheme = lightColorScheme(
             primary = androidx.compose.ui.graphics.Color(0xFF44698F),
             onPrimary = androidx.compose.ui.graphics.Color.White,
