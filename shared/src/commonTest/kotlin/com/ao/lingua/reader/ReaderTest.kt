@@ -36,13 +36,15 @@ class ReaderTest {
         store.toggleViewer()
         assertTrue(store.state.viewerVisible)
         assertEquals(2, store.state.index)
-        store.toggleBookmarks()
+        store.openBookmarks(returnToViewer = true)
         assertTrue(store.state.bookmarksVisible)
         assertFalse(store.state.viewerVisible)
         assertEquals(2, store.state.index)
         store.toggleBookmark()
         store.saveUserTranslation("반복, 그리고 \"인용\"")
-        store.toggleSettings()
+        store.closeBookmarks()
+        assertTrue(store.state.viewerVisible)
+        store.openSettings(returnToViewer = true)
         assertTrue(store.state.settingsVisible)
         assertFalse(store.state.bookmarksVisible)
         assertEquals(2, store.state.index)
@@ -56,6 +58,8 @@ class ReaderTest {
                 backgroundColor = "#FF1B1B1F",
             ),
         )
+        store.closeSettings()
+        assertTrue(store.state.viewerVisible)
 
         val resumed = ReaderStore(database)
         assertEquals(2, resumed.state.index)

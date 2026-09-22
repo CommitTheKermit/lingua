@@ -107,6 +107,8 @@ data class ReaderState(
     val viewerVisible: Boolean = false,
     val bookmarksVisible: Boolean = false,
     val settingsVisible: Boolean = false,
+    val bookmarksReturnToViewer: Boolean = false,
+    val settingsReturnToViewer: Boolean = false,
 ) {
     val currentSentence: String get() = sentences.getOrNull(index).orEmpty()
     val currentUserTranslation: String get() = userTranslations[index].orEmpty()
@@ -174,12 +176,38 @@ class ReaderStore(private val database: ReaderDatabase) {
         state = state.copy(viewerVisible = !state.viewerVisible, bookmarksVisible = false, settingsVisible = false)
     }
 
-    fun toggleBookmarks() {
-        state = state.copy(bookmarksVisible = !state.bookmarksVisible, settingsVisible = false)
+    fun openBookmarks(returnToViewer: Boolean) {
+        state = state.copy(
+            bookmarksVisible = true,
+            bookmarksReturnToViewer = returnToViewer,
+            viewerVisible = false,
+            settingsVisible = false,
+        )
     }
 
-    fun toggleSettings() {
-        state = state.copy(settingsVisible = !state.settingsVisible, viewerVisible = false, bookmarksVisible = false)
+    fun closeBookmarks() {
+        state = state.copy(
+            bookmarksVisible = false,
+            viewerVisible = state.bookmarksReturnToViewer,
+            bookmarksReturnToViewer = false,
+        )
+    }
+
+    fun openSettings(returnToViewer: Boolean) {
+        state = state.copy(
+            settingsVisible = true,
+            settingsReturnToViewer = returnToViewer,
+            viewerVisible = false,
+            bookmarksVisible = false,
+        )
+    }
+
+    fun closeSettings() {
+        state = state.copy(
+            settingsVisible = false,
+            viewerVisible = state.settingsReturnToViewer,
+            settingsReturnToViewer = false,
+        )
     }
 
     fun exportCsv(): String = buildString {

@@ -55,6 +55,7 @@ fun App(translationAvailable: Boolean) {
     val installDictionary = rememberDictionaryInstaller()
     var dictionaryStore by remember { mutableStateOf<DictionaryStore?>(null) }
     var showSplash by remember { mutableStateOf(true) }
+    var translationUsageLabel by remember { mutableStateOf("확인 전") }
     val translationClient = remember { RemoteTranslationClient() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(installDictionary) {
@@ -90,46 +91,62 @@ fun App(translationAvailable: Boolean) {
             onNext = store::next,
             onMoveTo = store::moveTo,
             onToggleViewer = store::toggleViewer,
-            onToggleBookmarks = store::toggleBookmarks,
+            onOpenBookmarks = store::openBookmarks,
+            onCloseBookmarks = store::closeBookmarks,
             onToggleBookmark = store::toggleBookmark,
             onRemoveBookmark = store::removeBookmark,
             onUserTranslationChange = store::saveUserTranslation,
-            onToggleSettings = store::toggleSettings,
+            onOpenSettings = store::openSettings,
+            onCloseSettings = store::closeSettings,
             onDisplayStyleChange = store::updateDisplayStyle,
             onExportCsv = {
                 exportCsv(CsvDocument("${store.state.title.substringBeforeLast('.')}.csv", store.exportCsv()))
             },
             onOpenDictionary = { query -> dictionaryStore?.open(query) },
+            translationUsageLabel = translationUsageLabel,
         )
         if (!showSplash) dictionaryStore?.let { dictionary ->
+            val requestRemoteTranslation = {
+                dictionary.beginTranslation()?.let { request ->
+                    if (!translationAvailable) {
+                        dictionary.failTranslation(request, "온라인 번역 설정이 준비되지 않았습니다. 오프라인 사전은 계속 사용할 수 있습니다.")
+                    } else {
+                        scope.launch {
+                            try {
+                                val result = translationClient.translate(request.query)
+                                val used = (result.quotaMax - result.quotaRemaining).coerceAtLeast(0)
+                                translationUsageLabel = "$used/${result.quotaMax}"
+                                dictionary.finishTranslation(request, result.translated)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                val message = failure.translationMessage()
+                                if (message.contains("한도")) translationUsageLabel = "한도 도달"
+                                dictionary.failTranslation(request, message)
+                            }
+                        }
+                    }
+                }
+                Unit
+            }
             if (dictionary.state.visible) {
                 DictionarySheet(
                     state = dictionary.state,
                     metadata = dictionary.metadata,
                     onDismiss = dictionary::close,
                     onSearch = dictionary::search,
-                    onTranslate = {
-                        dictionary.beginTranslation()?.let { request ->
-                            if (!translationAvailable) {
-                                dictionary.failTranslation(request, "온라인 번역 설정이 준비되지 않았습니다. 오프라인 사전은 계속 사용할 수 있습니다.")
-                                return@let
-                            }
-                            scope.launch {
-                                try {
-                                    val result = translationClient.translate(request.query)
-                                    dictionary.finishTranslation(request, result.translated)
-                                } catch (cancelled: CancellationException) {
-                                    throw cancelled
-                                } catch (failure: Exception) {
-                                    dictionary.failTranslation(request, failure.translationMessage())
-                                }
-                            }
-                        }
-                    },
+                    onTranslate = requestRemoteTranslation,
                 )
             }
             dictionary.state.translationError?.let { message ->
-                TranslationErrorDialog(message, dictionary::dismissTranslationError)
+                TranslationErrorDialog(
+                    message = message,
+                    onDismiss = dictionary::dismissTranslationError,
+                    onRetry = {
+                        dictionary.dismissTranslationError()
+                        requestRemoteTranslation()
+                    },
+                )
             }
         }
     }
