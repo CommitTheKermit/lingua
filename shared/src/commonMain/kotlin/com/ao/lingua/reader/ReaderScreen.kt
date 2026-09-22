@@ -42,6 +42,7 @@ import androidx.compose.ui.window.DialogProperties
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import com.ao.lingua.ui.linguaFontFamily
+import com.ao.lingua.translation.MachineTranslationState
 import lingua.shared.generated.resources.Res
 import lingua.shared.generated.resources.reader_arrow_left
 import lingua.shared.generated.resources.reader_arrow_right
@@ -78,12 +79,13 @@ private const val PrivacyPolicyUrl = "https://lingua-af9c2.web.app/privacy/"
     onOpenSettings: (Boolean) -> Unit, onCloseSettings: () -> Unit,
     onDisplayStyleChange: (DisplayTarget, DisplayStyle) -> Unit,
     onExportCsv: () -> Unit, onOpenDictionary: (String) -> Unit,
-    translationUsageLabel: String, modifier: Modifier = Modifier,
+    translationUsageLabel: String, translationVisible: Boolean,
+    onToggleTranslation: () -> Unit, machineTranslation: MachineTranslationState?,
+    onRetryTranslation: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val drawer = rememberDrawerState(DrawerValue.Closed); val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     var jump by remember { mutableStateOf(false) }
-    var translationVisible by remember { mutableStateOf(true) }
     var timerVisible by remember { mutableStateOf(false) }
     var elapsedSeconds by remember { mutableStateOf(0) }
     LaunchedEffect(timerVisible) {
@@ -138,7 +140,9 @@ private const val PrivacyPolicyUrl = "https://lingua-af9c2.web.app/privacy/"
                     menu = { scope.launch { drawer.open() } },
                     search = { onOpenDictionary("") },
                     translationVisible = translationVisible,
-                    toggleTranslation = { translationVisible = !translationVisible },
+                    toggleTranslation = onToggleTranslation,
+                    machineTranslation = machineTranslation,
+                    retryTranslation = onRetryTranslation,
                     timerVisible = timerVisible,
                     elapsedSeconds = elapsedSeconds,
                     toggleTimer = { timerVisible = !timerVisible },
@@ -156,7 +160,7 @@ private const val PrivacyPolicyUrl = "https://lingua-af9c2.web.app/privacy/"
     input: (String) -> Unit, dictionary: (String) -> Unit,
     menu: () -> Unit, search: () -> Unit, translationVisible: Boolean,
     toggleTranslation: () -> Unit, timerVisible: Boolean, elapsedSeconds: Int, toggleTimer: () -> Unit,
-    translationUsageLabel: String,
+    translationUsageLabel: String, machineTranslation: MachineTranslationState?, retryTranslation: () -> Unit,
 ) {
     val inputFocusRequester = remember { FocusRequester() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -178,7 +182,17 @@ private const val PrivacyPolicyUrl = "https://lingua-af9c2.web.app/privacy/"
             Spacer(Modifier.height(4.dp))
             ReaderPanel("번역", modifier = Modifier.height(mainPanelHeight)) {
                 if (translationVisible && state.sentences.isNotEmpty()) {
-                    TextPanel("단어를 선택하면 오프라인 사전에서 뜻을 확인합니다. 사전에 없는 단어만 DeepL 번역을 요청할 수 있습니다.", machine, Modifier.fillMaxSize())
+                    val translation = machineTranslation
+                    if (translation?.error != null) {
+                        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                            Text(translation.error, style = style(machine))
+                            Spacer(Modifier.height(8.dp))
+                            Text("다시 시도", Modifier.clickable(onClick = retryTranslation), color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        }
+                    } else {
+                        val message = translation?.translated ?: if (translation?.loading == true) "문장을 번역하는 중..." else "번역을 준비하는 중..."
+                        TextPanel(message, machine, Modifier.fillMaxSize())
+                    }
                 }
             }
             Spacer(Modifier.height(4.dp))

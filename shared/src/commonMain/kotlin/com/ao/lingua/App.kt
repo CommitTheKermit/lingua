@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.ao.lingua.dictionary.DictionaryRepository
 import com.ao.lingua.dictionary.DictionarySheet
 import com.ao.lingua.dictionary.DictionaryStore
-import com.ao.lingua.dictionary.TranslationErrorDialog
 import com.ao.lingua.dictionary.dictionaryFileName
 import com.ao.lingua.dictionary.rememberDictionaryInstaller
 import com.ao.lingua.reader.CsvDocument
@@ -36,6 +35,9 @@ import com.ao.lingua.reader.rememberReaderDatabase
 import com.ao.lingua.reader.rememberTextFilePicker
 import lingua.shared.generated.resources.Res
 import com.ao.lingua.translation.RemoteTranslationClient
+import com.ao.lingua.translation.MachineTranslationStore
+import com.ao.lingua.translation.SentenceTranslationKey
+import com.ao.lingua.translation.TranslationJob
 import com.ao.lingua.translation.translationMessage
 import com.ao.lingua.ui.linguaTypography
 import kotlinx.coroutines.delay
@@ -56,8 +58,38 @@ fun App(translationAvailable: Boolean) {
     var dictionaryStore by remember { mutableStateOf<DictionaryStore?>(null) }
     var showSplash by remember { mutableStateOf(true) }
     var translationUsageLabel by remember { mutableStateOf("확인 전") }
+    var translationVisible by remember { mutableStateOf(true) }
     val translationClient = remember { RemoteTranslationClient() }
+    val machineTranslation = remember { MachineTranslationStore() }
     val scope = rememberCoroutineScope()
+    val sentenceKey = SentenceTranslationKey(store.state.documentId, store.state.index, store.state.currentSentence)
+    val shownTranslation = machineTranslation.state.takeIf { it.key == sentenceKey }
+    val translateSentence: suspend (TranslationJob) -> Unit = { job ->
+        if (!translationAvailable) {
+            machineTranslation.fail(job, "온라인 번역 설정이 준비되지 않았습니다.")
+        } else {
+            try {
+                val result = translationClient.translate(job.key.sentence)
+                val used = (result.quotaMax - result.quotaRemaining).coerceAtLeast(0)
+                translationUsageLabel = "$used/${result.quotaMax}"
+                machineTranslation.finish(job, result.translated)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                val message = failure.translationMessage()
+                if (message.contains("한도")) translationUsageLabel = "한도 도달"
+                machineTranslation.fail(job, message)
+            }
+        }
+    }
+    LaunchedEffect(sentenceKey, translationVisible, store.state.viewerVisible, store.state.settingsVisible, showSplash) {
+        if (showSplash || !translationVisible || store.state.viewerVisible || store.state.settingsVisible || sentenceKey.sentence.isBlank()) {
+            machineTranslation.deactivate()
+        } else {
+            machineTranslation.select(sentenceKey)
+            machineTranslation.begin()?.let { translateSentence(it) }
+        }
+    }
     LaunchedEffect(installDictionary) {
         dictionaryStore = withContext(Dispatchers.Default) {
             val bytes = Res.readBytes("files/dict/wiktionary_en_ko.db")
@@ -104,48 +136,20 @@ fun App(translationAvailable: Boolean) {
             },
             onOpenDictionary = { query -> dictionaryStore?.open(query) },
             translationUsageLabel = translationUsageLabel,
+            translationVisible = translationVisible,
+            onToggleTranslation = { translationVisible = !translationVisible },
+            machineTranslation = shownTranslation,
+            onRetryTranslation = {
+                machineTranslation.retry()?.let { job -> scope.launch { translateSentence(job) } }
+            },
         )
         if (!showSplash) dictionaryStore?.let { dictionary ->
-            val requestRemoteTranslation = {
-                dictionary.beginTranslation()?.let { request ->
-                    if (!translationAvailable) {
-                        dictionary.failTranslation(request, "온라인 번역 설정이 준비되지 않았습니다. 오프라인 사전은 계속 사용할 수 있습니다.")
-                    } else {
-                        scope.launch {
-                            try {
-                                val result = translationClient.translate(request.query)
-                                val used = (result.quotaMax - result.quotaRemaining).coerceAtLeast(0)
-                                translationUsageLabel = "$used/${result.quotaMax}"
-                                dictionary.finishTranslation(request, result.translated)
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (failure: Exception) {
-                                val message = failure.translationMessage()
-                                if (message.contains("한도")) translationUsageLabel = "한도 도달"
-                                dictionary.failTranslation(request, message)
-                            }
-                        }
-                    }
-                }
-                Unit
-            }
             if (dictionary.state.visible) {
                 DictionarySheet(
                     state = dictionary.state,
                     metadata = dictionary.metadata,
                     onDismiss = dictionary::close,
                     onSearch = dictionary::search,
-                    onTranslate = requestRemoteTranslation,
-                )
-            }
-            dictionary.state.translationError?.let { message ->
-                TranslationErrorDialog(
-                    message = message,
-                    onDismiss = dictionary::dismissTranslationError,
-                    onRetry = {
-                        dictionary.dismissTranslationError()
-                        requestRemoteTranslation()
-                    },
                 )
             }
         }

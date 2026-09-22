@@ -35,7 +35,6 @@ fun DictionarySheet(
     metadata: DictionaryMetadata,
     onDismiss: () -> Unit,
     onSearch: (String) -> Unit,
-    onTranslate: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
@@ -57,7 +56,7 @@ fun DictionarySheet(
             if (state.query.isBlank()) {
                 DictionarySearch(onSearch)
             } else {
-                DictionaryContents(state, metadata, onTranslate, Modifier.weight(1f))
+                DictionaryContents(state, metadata, Modifier.weight(1f))
             }
 
             Box(
@@ -93,7 +92,6 @@ private fun ColumnScope.DictionarySearch(onSearch: (String) -> Unit) {
 private fun DictionaryContents(
     state: DictionaryState,
     metadata: DictionaryMetadata,
-    onTranslate: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -110,12 +108,6 @@ private fun DictionaryContents(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text("사전에 없는 단어입니다.", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("필요한 경우 온라인 번역을 요청할 수 있습니다.", color = Body, fontSize = 16.sp, lineHeight = 23.sp)
-                    Box(
-                        Modifier.fillMaxWidth().height(40.dp).background(if (state.translating) Line else Blue, RoundedCornerShape(4.dp)).clickable(enabled = !state.translating, onClick = onTranslate),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(if (state.translating) "번역 중" else "DeepL로 번역", color = if (state.translating) Muted else White, fontSize = 14.sp) }
-                    state.remoteTranslation?.let { Text(it, color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium) }
                     Text("한국어 위키낱말사전 · ${metadata.license}", color = Muted, fontSize = 11.sp)
                 }
             }
