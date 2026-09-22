@@ -144,6 +144,7 @@ class DictionaryStore(private val repository: DictionaryRepository) {
     }
 }
 
+@ConsistentCopyVisibility
 data class DictionaryTranslationRequest internal constructor(val id: Long, val query: String)
 
 internal fun dictionaryFileName(bytes: ByteArray): String {

@@ -5,22 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.ao.lingua.App
-import android.content.pm.ApplicationInfo
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
-import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val firebaseApp = FirebaseApp.initializeApp(this)
-        val appCheckProvider = if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
-            DebugAppCheckProviderFactory.getInstance()
-        } else {
-            PlayIntegrityAppCheckProviderFactory.getInstance()
-        }
         if (firebaseApp != null) {
-            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProvider)
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProviderFactory())
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

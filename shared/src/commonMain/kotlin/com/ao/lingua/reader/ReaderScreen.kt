@@ -28,6 +28,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +67,7 @@ private val White = Color(0xFFF8F9FA)
 private val Line = Color(0xFFDEE2E6)
 private val Muted = Color(0xFF868E96)
 private val Ink = Color(0xFF181B1E)
+private const val PrivacyPolicyUrl = "https://lingua-af9c2.web.app/privacy/"
 
 @Composable fun ReaderScreen(
     state: ReaderState, onOpenFile: () -> Unit, onPrevious: () -> Unit, onNext: () -> Unit,
@@ -79,6 +81,7 @@ private val Ink = Color(0xFF181B1E)
     translationUsageLabel: String, modifier: Modifier = Modifier,
 ) {
     val drawer = rememberDrawerState(DrawerValue.Closed); val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
     var jump by remember { mutableStateOf(false) }
     var translationVisible by remember { mutableStateOf(true) }
     var timerVisible by remember { mutableStateOf(false) }
@@ -103,6 +106,10 @@ private val Ink = Color(0xFF181B1E)
             DrawerItem("단어장", Res.drawable.reader_menu_book) { onOpenBookmarks(false); scope.launch { drawer.close() } }
             DrawerVectorItem("번역문 내보내기", Icons.Filled.UploadFile, state.userTranslations.isNotEmpty()) {
                 onExportCsv()
+                scope.launch { drawer.close() }
+            }
+            DrawerVectorItem("개인정보처리방침", Icons.Filled.PrivacyTip, true) {
+                uriHandler.openUri(PrivacyPolicyUrl)
                 scope.launch { drawer.close() }
             }
         }
@@ -150,41 +157,49 @@ private val Ink = Color(0xFF181B1E)
     menu: () -> Unit, search: () -> Unit, translationVisible: Boolean,
     toggleTranslation: () -> Unit, timerVisible: Boolean, elapsedSeconds: Int, toggleTimer: () -> Unit,
     translationUsageLabel: String,
-) = Column(Modifier.fillMaxSize()) {
+) {
     val inputFocusRequester = remember { FocusRequester() }
-    TopBar(state.title.ifBlank { "파일을 선택해 주세요." }, menu, search, { inputFocusRequester.requestFocus() }, toggleTranslation)
-    Spacer(Modifier.height(4.dp))
-    val original = state.displaySettings.getValue(DisplayTarget.ORIGINAL)
-    val machine = state.displaySettings.getValue(DisplayTarget.MACHINE_TRANSLATION)
-    val user = state.displaySettings.getValue(DisplayTarget.USER_TRANSLATION)
-    ReaderPanel("원문", state.positionLabel, Modifier.height(204.dp)) {
-        if (state.sentences.isEmpty()) {
-            EmptyDocument(onOpenFile)
-        } else TextPanel(state.currentSentence, original, Modifier.fillMaxSize())
-    }
-    Spacer(Modifier.height(4.dp))
-    ReaderPanel("번역", modifier = Modifier.height(204.dp)) {
-        if (translationVisible && state.sentences.isNotEmpty()) {
-            TextPanel("단어를 선택하면 오프라인 사전에서 뜻을 확인합니다. 사전에 없는 단어만 DeepL 번역을 요청할 수 있습니다.", machine, Modifier.fillMaxSize())
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val fixedHeight = 209.dp
+        val panelScale = ((maxHeight - fixedHeight).value / 515f).coerceIn(0.45f, 1f)
+        val mainPanelHeight = (204f * panelScale).dp
+        val inputPanelHeight = (107f * panelScale).dp
+        Column(Modifier.fillMaxSize()) {
+            TopBar(state.title.ifBlank { "파일을 선택해 주세요." }, menu, search, { inputFocusRequester.requestFocus() }, toggleTranslation)
+            Spacer(Modifier.height(4.dp))
+            val original = state.displaySettings.getValue(DisplayTarget.ORIGINAL)
+            val machine = state.displaySettings.getValue(DisplayTarget.MACHINE_TRANSLATION)
+            val user = state.displaySettings.getValue(DisplayTarget.USER_TRANSLATION)
+            ReaderPanel("원문", state.positionLabel, Modifier.height(mainPanelHeight)) {
+                if (state.sentences.isEmpty()) {
+                    EmptyDocument(onOpenFile)
+                } else TextPanel(state.currentSentence, original, Modifier.fillMaxSize())
+            }
+            Spacer(Modifier.height(4.dp))
+            ReaderPanel("번역", modifier = Modifier.height(mainPanelHeight)) {
+                if (translationVisible && state.sentences.isNotEmpty()) {
+                    TextPanel("단어를 선택하면 오프라인 사전에서 뜻을 확인합니다. 사전에 없는 단어만 DeepL 번역을 요청할 수 있습니다.", machine, Modifier.fillMaxSize())
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            ReaderPanel("번역문 입력", if (state.sentences.isEmpty()) "" else "자동 저장", Modifier.height(inputPanelHeight)) {
+                if (state.sentences.isNotEmpty()) {
+                    BasicTextField(
+                        value = state.currentUserTranslation,
+                        onValueChange = input,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).focusRequester(inputFocusRequester),
+                        textStyle = style(user),
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            WordStrip(state.currentSentence, dictionary)
+            Spacer(Modifier.height(4.dp))
+            StatusStrip(timerVisible, elapsedSeconds, translationUsageLabel, toggleTimer)
+            Spacer(Modifier.weight(1f))
+            BottomControls(previous, next, { inputFocusRequester.requestFocus() }, state.canGoPrevious, state.canGoNext, state.sentences.isNotEmpty())
         }
     }
-    Spacer(Modifier.height(4.dp))
-    ReaderPanel("번역문 입력", if (state.sentences.isEmpty()) "" else "자동 저장", Modifier.height(107.dp)) {
-        if (state.sentences.isNotEmpty()) {
-            BasicTextField(
-                value = state.currentUserTranslation,
-                onValueChange = input,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).focusRequester(inputFocusRequester),
-                textStyle = style(user),
-            )
-        }
-    }
-    Spacer(Modifier.height(4.dp))
-    WordStrip(state.currentSentence, dictionary)
-    Spacer(Modifier.height(4.dp))
-    StatusStrip(timerVisible, elapsedSeconds, translationUsageLabel, toggleTimer)
-    Spacer(Modifier.weight(1f))
-    BottomControls(previous, next, { inputFocusRequester.requestFocus() }, state.canGoPrevious, state.canGoNext, state.sentences.isNotEmpty())
 }
 
 @Composable private fun EmptyDocument(openFile: () -> Unit) = Column(
