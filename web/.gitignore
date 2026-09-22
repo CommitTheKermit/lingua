@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/assets/
+public/dict/
+.env*
+*.tsbuildinfo
+test-results/
+playwright-report/
