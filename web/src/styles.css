@@ -1283,12 +1283,7 @@ button:disabled img {
     width: 36px;
   }
   .workspace-status {
-    padding: 6px 16px;
-    font-size: 0.625rem;
-    min-height: 30px;
-  }
-  .workspace-status > span {
-    gap: 4px;
+    display: none;
   }
   .reading-toolbar {
     min-height: 48px;
