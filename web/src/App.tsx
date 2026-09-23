@@ -626,7 +626,6 @@ export default function App() {
                         }
                       />
                       <div className="translation-caption">
-                        <span>입력한 내용은 문장별로 자동 저장됩니다</span>
                         <span>
                           {(doc.translations[doc.index] ?? "").length}자
                         </span>
