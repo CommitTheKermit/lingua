@@ -2,6 +2,8 @@ export type SentenceTranslationKey = {
   documentId: string;
   sentenceIndex: number;
   sentence: string;
+  context: string;
+  instructions: string;
 };
 
 export type MachineTranslationState = {
@@ -23,7 +25,9 @@ function sameSentence(
   return (
     left?.documentId === right.documentId &&
     left.sentenceIndex === right.sentenceIndex &&
-    left.sentence === right.sentence
+    left.sentence === right.sentence &&
+    left.context === right.context &&
+    left.instructions === right.instructions
   );
 }
 
@@ -99,6 +103,12 @@ export class MachineTranslationStore {
   }
 
   private cacheKey(key: SentenceTranslationKey): string {
-    return JSON.stringify([key.documentId, key.sentenceIndex, key.sentence]);
+    return JSON.stringify([
+      key.documentId,
+      key.sentenceIndex,
+      key.sentence,
+      key.context,
+      key.instructions,
+    ]);
   }
 }

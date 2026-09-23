@@ -9,6 +9,7 @@ import {
   type ReaderState,
 } from "./domain/reader";
 import { persistReader, restoreReader } from "./services/storage";
+import type { TranslationProfile } from "./domain/translationProfile";
 
 export function useReader() {
   const [state, setState] = useState(initialReader);
@@ -103,5 +104,17 @@ export function useReader() {
         ...current,
         settings: { ...current.settings, [target]: style },
       })),
+    updateTranslationProfile: (profile: TranslationProfile) =>
+      setState((current) => {
+        const documentId = current.document?.id;
+        if (!documentId) return current;
+        return {
+          ...current,
+          translationProfilesByDocument: {
+            ...current.translationProfilesByDocument,
+            [documentId]: profile,
+          },
+        };
+      }),
   };
 }

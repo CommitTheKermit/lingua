@@ -22,7 +22,11 @@ export function useCurrentSentenceTranslation(
 
   const finishTranslation = useCallback(async (job: SentenceTranslationJob) => {
     try {
-      const result = await translateSentence(job.key.sentence);
+      const result = await translateSentence(job.key.sentence, {
+        presetId: "custom",
+        context: job.key.context,
+        instructions: job.key.instructions,
+      });
       onUsage(result);
       store.finish(job, result.translated);
     } catch (reason) {
@@ -50,6 +54,8 @@ export function useCurrentSentenceTranslation(
     key?.documentId,
     key?.sentenceIndex,
     key?.sentence,
+    key?.context,
+    key?.instructions,
     shouldTranslateCurrentSentence,
     finishTranslation,
     store,

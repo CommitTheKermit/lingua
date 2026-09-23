@@ -9,6 +9,7 @@ import {
   LoaderCircle,
   PanelLeftClose,
   Search,
+  SlidersHorizontal,
   ShieldCheck,
   WifiOff,
   X,
@@ -20,6 +21,7 @@ import { Icon } from "./components/Icon";
 import { Modal } from "./components/Modal";
 import { Dictionary } from "./components/Dictionary";
 import { Settings, textStyle } from "./components/Settings";
+import { TranslationProfileDialog } from "./components/TranslationProfileDialog";
 import {
   BookmarkDialog,
   JumpDialog,
@@ -29,8 +31,19 @@ import { Viewer } from "./components/Viewer";
 import type { SentenceTranslationKey } from "./services/machineTranslation";
 import { useCurrentSentenceTranslation } from "./useCurrentSentenceTranslation";
 import type { TranslationResult } from "./services/translation";
+import {
+  defaultTranslationProfile,
+  translationProfilePresets,
+} from "./domain/translationProfile";
 
-type DialogName = "search" | "bookmarks" | "settings" | "jump" | "menu" | null;
+type DialogName =
+  | "search"
+  | "bookmarks"
+  | "settings"
+  | "translation-profile"
+  | "jump"
+  | "menu"
+  | null;
 export default function App() {
   const reader = useReader();
   const doc = reader.state.document;
@@ -88,11 +101,21 @@ export default function App() {
     scrollRequest.current = index;
     reader.navigate(index);
   }
+  const translationProfile = doc
+    ? reader.state.translationProfilesByDocument[doc.id] ??
+      defaultTranslationProfile()
+    : defaultTranslationProfile();
+  const translationProfileName =
+    translationProfilePresets.find(
+      (preset) => preset.presetId === translationProfile.presetId,
+    )?.name ?? "직접 설정";
   const sentenceTranslationKey: SentenceTranslationKey | null = doc
     ? {
         documentId: doc.id,
         sentenceIndex: doc.index,
         sentence: doc.sentences[doc.index],
+        context: translationProfile.context,
+        instructions: translationProfile.instructions,
       }
     : null;
   const currentSentenceTranslation = useCurrentSentenceTranslation(
@@ -100,6 +123,7 @@ export default function App() {
     !!sentenceTranslationKey &&
       !viewer &&
       dialog !== "settings" &&
+      dialog !== "translation-profile" &&
       translationVisible,
     setUsage,
   );
@@ -370,6 +394,14 @@ export default function App() {
                 >
                   <Icon name="translate" />
                 </button>
+                <button
+                  className="icon-button"
+                  aria-label="번역 프로필"
+                  disabled={!doc}
+                  onClick={() => setDialog("translation-profile")}
+                >
+                  <SlidersHorizontal size={20} />
+                </button>
               </>
             )}
             {viewer && (
@@ -576,7 +608,11 @@ export default function App() {
                     <section className="machine-translation-panel reading-panel">
                       <div className="panel-heading">
                         <h2>문장 번역</h2>
-                        <span>DeepL · 자동</span>
+                        <span>
+                          DeepL · {translationProfile.presetId === "default"
+                            ? "자동"
+                            : translationProfileName}
+                        </span>
                       </div>
                       <div
                         className="machine-translation-copy"
@@ -736,6 +772,16 @@ export default function App() {
           settings={reader.state.settings}
           viewer={viewer}
           onChange={reader.updateStyle}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === "translation-profile" && doc && (
+        <TranslationProfileDialog
+          profile={translationProfile}
+          onApply={(profile) => {
+            reader.updateTranslationProfile(profile);
+            setDialog(null);
+          }}
           onClose={() => setDialog(null)}
         />
       )}

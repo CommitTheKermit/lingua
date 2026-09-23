@@ -5,6 +5,7 @@ import {
 } from "firebase/app-check";
 import { getAuth, signInAnonymously } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import type { TranslationProfile } from "../domain/translationProfile";
 export type TranslationResult = {
   translated: string;
   quotaRemaining: number;
@@ -12,7 +13,9 @@ export type TranslationResult = {
   nextRefillAtMs?: number | null;
   cached: boolean;
 };
-let callTranslation: ((text: string) => Promise<TranslationResult>) | undefined;
+let callTranslation:
+  | ((text: string, profile: TranslationProfile) => Promise<TranslationResult>)
+  | undefined;
 function configure() {
   const env = import.meta.env;
   if (
@@ -44,19 +47,32 @@ function configure() {
   });
   const auth = getAuth(app);
   const translate = httpsCallable<
-    { text: string; sourceLang: string; targetLang: string },
+    {
+      text: string;
+      sourceLang: string;
+      targetLang: string;
+      context: string;
+      instructions: string;
+    },
     TranslationResult
   >(getFunctions(app, "asia-northeast3"), "translateProxy", { timeout: 30000 });
-  return async (text: string) => {
+  return async (text: string, profile: TranslationProfile) => {
     await auth.authStateReady();
     if (!auth.currentUser) await signInAnonymously(auth);
     return (
-      await translate({ text: text.trim(), sourceLang: "EN", targetLang: "KO" })
+      await translate({
+        text: text.trim(),
+        sourceLang: "EN",
+        targetLang: "KO",
+        context: profile.context,
+        instructions: profile.instructions,
+      })
     ).data;
   };
 }
 export async function translateSentence(
   text: string,
+  profile: TranslationProfile,
 ): Promise<TranslationResult> {
   if (!navigator.onLine)
     throw new Error(
@@ -64,7 +80,7 @@ export async function translateSentence(
     );
   callTranslation ??= configure();
   try {
-    return await callTranslation(text);
+    return await callTranslation(text, profile);
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === "functions/resource-exhausted")

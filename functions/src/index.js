@@ -11,13 +11,37 @@ const DEEPL_API_KEY = defineSecret("DEEPL_API_KEY");
 
 async function handleTranslate(request) {
   requireAnonymous(request);
-  const {text, sourceLang = "EN", targetLang = "KO"} = request.data ?? {};
+  const {
+    text,
+    sourceLang = "EN",
+    targetLang = "KO",
+    context = "",
+    instructions = "",
+  } = request.data ?? {};
   if (typeof text !== "string" || text.trim() === "") {
     throw new HttpsError("invalid-argument", "text must be a non-empty string");
   }
+  if (typeof context !== "string" || context.length > 5000) {
+    throw new HttpsError(
+      "invalid-argument",
+      "context must be at most 5000 characters",
+    );
+  }
+  if (typeof instructions !== "string" || instructions.length > 300) {
+    throw new HttpsError(
+      "invalid-argument",
+      "instructions must be at most 300 characters",
+    );
+  }
   const result = await executeTranslation({
     db: getFirestore(),
-    request: {text, sourceLang, targetLang},
+    request: {
+      text,
+      sourceLang,
+      targetLang,
+      context: context.trim(),
+      instructions: instructions.trim(),
+    },
     uid: request.auth.uid,
     translate: (input) => translate({...input, apiKey: DEEPL_API_KEY.value()}),
   }).catch((error) => {

@@ -1,3 +1,5 @@
+import type { TranslationProfile } from "./translationProfile";
+
 export const SPLITTER_VERSION = 2;
 const abbreviations = new Set([
   "dr",
@@ -93,6 +95,7 @@ export type ReaderDocument = {
 export type ReaderState = {
   document: ReaderDocument | null;
   settings: DisplaySettings;
+  translationProfilesByDocument: Record<string, TranslationProfile>;
 };
 const style: DisplayStyle = {
   font: "sans",
@@ -104,6 +107,7 @@ const style: DisplayStyle = {
 export function initialReader(): ReaderState {
   return {
     document: null,
+    translationProfilesByDocument: {},
     settings: {
       original: { ...style },
       machineTranslation: { ...style },

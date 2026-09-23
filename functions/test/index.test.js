@@ -31,3 +31,11 @@ test("handler accepts only an anonymous Firebase UID", async () => {
     data: {text: "Hello"},
   })).rejects.toMatchObject({code: "permission-denied"});
 });
+
+test("handler limits optional DeepL context and instruction lengths", async () => {
+  const auth = {uid: "user", token: {firebase: {sign_in_provider: "anonymous"}}};
+  await expect(handleTranslate({auth, data: {text: "Hello", context: "x".repeat(5001)}}))
+    .rejects.toMatchObject({code: "invalid-argument"});
+  await expect(handleTranslate({auth, data: {text: "Hello", instructions: "x".repeat(301)}}))
+    .rejects.toMatchObject({code: "invalid-argument"});
+});

@@ -66,6 +66,12 @@ test("quota refills by three every two minutes and never exceeds 200", () => {
   expect(monthKey(Date.parse("2026-01-31T23:59:59Z"))).toBe("2026-01");
 });
 
+test("translation cache separates results by context and instructions", () => {
+  expect(cacheKey({...request, context: "", instructions: ""})).toBe(cacheKey(request));
+  expect(cacheKey({...request, context: "grimdark"})).not.toBe(cacheKey(request));
+  expect(cacheKey({...request, instructions: "formal prose"})).not.toBe(cacheKey(request));
+});
+
 test("quota status reports the next refill without mutating stored quota", async () => {
   const db = new FakeFirestore({
     "users/anon": {quotaRemaining: 7, quotaLastTs: new Date(nowMs)},

@@ -5,11 +5,15 @@ const firstSentence = {
   documentId: "book-a",
   sentenceIndex: 0,
   sentence: "The first sentence.",
+  context: "",
+  instructions: "",
 };
 const secondSentence = {
   documentId: "book-a",
   sentenceIndex: 1,
   sentence: "The second sentence.",
+  context: "",
+  instructions: "",
 };
 
 describe("현재 문장의 기계번역 흐름", () => {
@@ -40,6 +44,18 @@ describe("현재 문장의 기계번역 흐름", () => {
 
     expect(translations.state.translated).toBe("첫 문장 번역");
     expect(translations.begin()).toBeNull();
+  });
+
+  it("번역 프로필이 바뀌면 같은 문장도 새로 번역한다", () => {
+    const translations = new MachineTranslationStore();
+    translations.select(firstSentence);
+    const defaultRequest = translations.begin();
+    translations.finish(defaultRequest!, "기본 번역");
+
+    translations.select({ ...firstSentence, context: "Warhammer 40,000" });
+
+    expect(translations.state.translated).toBeNull();
+    expect(translations.begin()).not.toBeNull();
   });
 
   it("실패한 현재 문장은 재시도할 수 있고 오래된 응답은 반영하지 않는다", () => {

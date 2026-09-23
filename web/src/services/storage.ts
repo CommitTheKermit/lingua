@@ -20,6 +20,8 @@ export async function restoreReader(): Promise<ReaderState> {
     const settings = saved.state.settings;
     return {
       ...saved.state,
+      translationProfilesByDocument:
+        saved.state.translationProfilesByDocument ?? {},
       settings: {
         ...settings,
         machineTranslation:

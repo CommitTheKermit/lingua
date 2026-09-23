@@ -14,6 +14,11 @@ describe("브라우저 저장과 재실행 복원", () => {
     state.document!.translations = { 0: "첫 번째", 1: "두 번째" };
     state.document!.bookmarks = [1];
     state.settings.viewer.size = 24;
+    state.translationProfilesByDocument[state.document!.id] = {
+      presetId: "warhammer-40k",
+      context: "Warhammer 40,000",
+      instructions: "엄숙한 소설체",
+    };
     await persistReader(state);
     expect(await restoreReader()).toEqual(state);
   });

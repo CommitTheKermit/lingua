@@ -14,9 +14,12 @@ function monthKey(nowMs) {
   return new Date(nowMs).toISOString().slice(0, 7);
 }
 
-function cacheKey({text, sourceLang, targetLang}) {
+function cacheKey(request) {
+  const {text, sourceLang, targetLang, context = "", instructions = ""} = request;
+  const key = [text, sourceLang, targetLang];
+  if (context || instructions) key.push(context, instructions);
   return createHash("sha256")
-    .update(JSON.stringify([text, sourceLang, targetLang]))
+    .update(JSON.stringify(key))
     .digest("hex");
 }
 
