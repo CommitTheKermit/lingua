@@ -94,6 +94,7 @@ export type ReaderDocument = {
 };
 export type ReaderState = {
   document: ReaderDocument | null;
+  archivedDocuments: Record<string, ReaderDocument>;
   settings: DisplaySettings;
   translationProfilesByDocument: Record<string, TranslationProfile>;
 };
@@ -107,6 +108,7 @@ const style: DisplayStyle = {
 export function initialReader(): ReaderState {
   return {
     document: null,
+    archivedDocuments: {},
     translationProfilesByDocument: {},
     settings: {
       original: { ...style },
@@ -129,9 +131,15 @@ export function openDocument(
   const id = contentId(content);
   if (state.document?.id === id)
     return { ...state, document: { ...state.document, title } };
+  // 활성 책은 한 곳에서만 수정하고, 책을 바꿀 때 최신 기록을 보관한다.
+  const archivedDocuments = { ...state.archivedDocuments };
+  if (state.document) archivedDocuments[state.document.id] = state.document;
+  const previous = archivedDocuments[id];
+  delete archivedDocuments[id];
   return {
     ...state,
-    document: {
+    archivedDocuments,
+    document: previous ? { ...previous, title } : {
       id,
       title,
       content,

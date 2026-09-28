@@ -14,6 +14,8 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
+import { LibraryDialog } from "./components/LibraryDialog";
+import { sampleDocument } from "./domain/sample";
 import { useReader } from "./useReader";
 import { wordTokens } from "./domain/reader";
 import { downloadTranslations } from "./domain/export";
@@ -37,6 +39,7 @@ import {
 } from "./domain/translationProfile";
 
 type DialogName =
+  | "library"
   | "search"
   | "bookmarks"
   | "settings"
@@ -184,6 +187,12 @@ export default function App() {
       if (fileInput.current) fileInput.current.value = "";
     }
   }
+  function openSample() {
+    reader.open(sampleDocument.title, sampleDocument.content);
+    setViewer(false);
+    setDialog(null);
+    setFileError("");
+  }
   function focusInput() {
     setShowInput(true);
     setViewer(false);
@@ -206,6 +215,9 @@ export default function App() {
         <Icon name="menu_file" />
         <span>파일 열기</span>
         <span className="file-extension">TXT</span>
+      </button>
+      <button className="nav-item" onClick={() => setDialog("library")}>
+        <BookOpen size={20} /><span>내 서재</span>
       </button>
       <div className="nav-group">
         <button
@@ -505,6 +517,7 @@ export default function App() {
                 )}
                 텍스트 파일 열기
               </button>
+              <button className="secondary-button" onClick={openSample}>샘플 글로 체험하기</button>
               <small>TXT 파일을 여기에 끌어다 놓아도 됩니다</small>
             </div>
             <div className="empty-bottom">
@@ -766,6 +779,19 @@ export default function App() {
             개인정보처리방침
           </a>
         </Modal>
+      )}
+      {dialog === "library" && (
+        <LibraryDialog
+          documents={[...(doc ? [doc] : []), ...Object.values(reader.state.archivedDocuments)]}
+          currentId={doc?.id}
+          onSelect={(book) => {
+            reader.open(book.title, book.content);
+            setViewer(false);
+            setDialog(null);
+          }}
+          onSample={openSample}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog === "settings" && (
         <Settings

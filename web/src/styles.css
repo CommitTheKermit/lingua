@@ -1640,3 +1640,9 @@ button:disabled img {
     scroll-behavior: auto !important;
   }
 }
+
+.library-book { display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: left; padding: 16px; background: transparent; border: 0; border-bottom: 1px solid #dce1e6; cursor: pointer; color: inherit; }
+.library-book strong { overflow-wrap: anywhere; }
+.library-book span { font-size: 13px; color: #64748b; }
+.library-book:hover { background: #f1f5f9; }
+.empty-document > .secondary-button { margin-top: 12px; }

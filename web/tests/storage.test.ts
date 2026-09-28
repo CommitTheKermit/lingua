@@ -61,3 +61,36 @@ describe("브라우저 저장과 재실행 복원", () => {
     db.close();
   });
 });
+
+
+describe("여러 책의 기록 보호", () => {
+  it("책 전환과 재실행 후 위치, 번역, 책갈피와 프로필을 복원한다", async () => {
+    let state = openDocument(initialReader(), "A.txt", "First. Second.");
+    const id = state.document!.id;
+    state.document!.index = 1;
+    state.document!.translations[1] = "둘째 문장";
+    state.document!.bookmarks = [1];
+    state.translationProfilesByDocument[id] = { presetId: "custom", context: "fiction", instructions: "소설체" };
+    state = openDocument(state, "B.txt", "Another book.");
+    state.document!.translations[0] = "다른 책";
+    await persistReader(state);
+    state = openDocument(await restoreReader(), "A renamed.txt", "First. Second.");
+    expect(state.document).toMatchObject({ title: "A renamed.txt", index: 1, translations: {1: "둘째 문장"}, bookmarks: [1] });
+    expect(state.translationProfilesByDocument[id].instructions).toBe("소설체");
+    expect(state.archivedDocuments[id]).toBeUndefined();
+    state = openDocument(state, "B.txt", "Another book.");
+    expect(state.document!.translations[0]).toBe("다른 책");
+  });
+  it("서재가 없던 기존 저장 데이터의 현재 책도 보호한다", async () => {
+    const state = openDocument(initialReader(), "old.txt", "Keep me.");
+    state.document!.translations[0] = "기존 기록";
+    const { archivedDocuments, ...legacy } = state;
+    const db = await openDB("lingua-reader", 1);
+    await db.put("reader", { version: SPLITTER_VERSION, state: legacy }, "current");
+    db.close();
+    const restored = await restoreReader();
+    expect(restored.archivedDocuments).toEqual({});
+    const switched = openDocument(restored, "new.txt", "New book.");
+    expect(switched.archivedDocuments[state.document!.id].translations[0]).toBe("기존 기록");
+  });
+});
