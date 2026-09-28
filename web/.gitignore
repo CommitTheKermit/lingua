@@ -6,3 +6,6 @@ public/dict/
 *.tsbuildinfo
 test-results/
 playwright-report/
+
+public/licenses/
+.vercel/

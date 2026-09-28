@@ -6,7 +6,7 @@
 
 - 기능 기준: 앱 정상화 커밋 `425485b`, `4112ef3`, `fa407a5`, 문장 번역 교정 커밋 `e9d3d28`과 `../docs/cmp-kmp-dictionary-plan.md`
 - 디자인: [Figma 메인](https://www.figma.com/design/eAlz9gxh72enryXYIaDZYH?node-id=203-4851), [사전](https://www.figma.com/design/eAlz9gxh72enryXYIaDZYH?node-id=203-6940), [읽기](https://www.figma.com/design/eAlz9gxh72enryXYIaDZYH?node-id=203-5569), [옵션](https://www.figma.com/design/eAlz9gxh72enryXYIaDZYH?node-id=203-5509)
-- 앱의 아이콘, Noto Sans KR, SQLite 사전을 빌드 시 `shared/src/commonMain/composeResources`에서 복사한다. 생성된 사본은 Git에 넣지 않는다.
+- 앱의 아이콘과 SQLite 사전을 빌드 시 `shared/src/commonMain/composeResources`에서 복사한다. 생성된 사본은 Git에 넣지 않는다.
 - 사전 데이터는 한국어 위키낱말사전 기반 CC BY-SA 4.0이며 배포물에 원본 `NOTICE.txt`를 포함한다.
 
 ## 실행
@@ -42,26 +42,25 @@ npm run preview
 
 ## 온라인 번역 설정
 
-기존 Firebase 프로젝트의 `asia-northeast3/translateProxy`를 사용한다. 익명 인증과 App Check를 통과한 요청만 서버로 전송한다. DeepL 비밀키는 서버에만 존재한다. 번역 영역이 켜져 있으면 현재 영어 문장, 해당 책의 세계관 문맥과 번역 지침이 자동 전송된다. 문서 원문 전체와 사용자가 직접 쓴 번역은 전송하지 않는다. 프로필을 바꾸면 현재 문장을 다시 요청하므로 앱 번역 한도를 사용할 수 있다.
+웹은 Firebase SDK, 익명 인증, App Check, Firestore를 사용하지 않는다. `../server`의 자체 익명 세션 API와 SQLite 사용량 저장소를 사용한다. 기존 모바일 앱의 Firebase 서버는 별도로 유지한다.
 
-Git에서 제외한 `.env.local`에 다음 환경변수를 설정한다. 실제 값은 커밋하거나 문서에 붙이지 않는다.
+Git에서 제외한 `.env.development.local` 및 `.env.production.local`에 `VITE_TRANSLATION_API_URL`을 설정한다. 이는 공개 API 주소이며 빌드에 포함된다. DeepL 키와 세션 해시 비밀값은 서버의 Git 밖 `.env`에만 둔다. 서버 설치와 한도는 [서버 운영 문서](../server/README.md)를 참고한다.
 
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_APP_ID`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_RECAPTCHA_SITE_KEY`
+번역 영역이 켜져 있으면 현재 영어 문장, 해당 책의 세계관 문맥과 어투 지침이 서버와 DeepL로 자동 전송된다. 문서 전체를 한 번에 전송하거나 직접 쓴 번역을 전송하지 않는다. 모든 문장을 읽으면 원문 전체가 문장별로 전송될 수 있다. 프로필 변경도 별도 번역 요청이다. 연결 오류가 나도 로컬 읽기와 사전은 유지한다.
 
-운영 환경에는 Firebase 웹 앱과 reCAPTCHA Enterprise App Check 설정이 필요하다. 배포 도메인을 reCAPTCHA 허용 도메인에 등록한다. Firebase의 웹 클라이언트 설정과 공개 site key는 빌드 결과에 포함되지만, 서버 DeepL 키는 포함되지 않는다.
+## 정적 배포와 초기 로딩
 
-로컬 개발용 App Check debug token은 Git에서 제외한 `.env.development.local`의 `VITE_APPCHECK_DEBUG_TOKEN`으로만 제공한다. 운영 빌드에는 이 개발 환경 파일을 읽지 않으며 코드도 `import.meta.env.DEV`일 때만 사용한다. 로컬 프로덕션 미리보기에서 온라인 번역은 승인된 운영 도메인의 reCAPTCHA 검증을 통과하지 못할 수 있다. 로컬 온라인 번역 검증은 개발 서버에서 수행한다.
+`npm run build`로 만든 `dist`만 별도 임시 폴더에 복사하고 `vercel.static.json`을 그 폴더의 `vercel.json`으로 복사한다. 그 폴더를 `vercel deploy <폴더> --project lingua-web-beta --target preview --yes`로 배포한다. 소스나 환경 파일을 업로드하지 않는다. 베타 별칭은 `vercel alias set <배포 URL> lingua-web-beta.vercel.app`으로 연결한다. 서버의 `ALLOWED_ORIGINS`에 실제 웹 origin을 정확히 등록한다.
 
-연결 정보가 없거나 서버 오류가 발생해도 오프라인 읽기와 사전 기능을 유지하고 재시도 안내를 표시한다. 온라인 사용량은 서버가 실제 반환한 수치만 표시한다.
+- Firebase 의존성 제거로 메인 JavaScript가 469.48KB에서 350.83KB로 감소했다. gzip은 149.23KB에서 112.33KB다. 실사용 전체 전송량이나 화면 표시 시간과는 다른 지표다.
+- 9.9MB 단일 TTF 대신 자체 호스팅하는 Noto Sans KR unicode-range WOFF2 조각을 사용한다. 사용하는 문자 조각만 다운로드하며 글꼴 라이선스를 배포한다.
+- 초기 load 이후 5초 뒤 사전/정적 자원 오프라인 캐시를 준비한다. 모든 글꼴 조각을 미리 받지 않고 실제 요청된 글꼴만 캐시한다.
+- 해시가 포함된 번들/글꼴/WASM은 장기 캐시, 서비스 워커는 재검증한다. 개인정보 페이지도 자체 호스팅하며 오프라인 탐색 경로를 분리한다.
 
 ## 구조
 
 - `src/domain`: 앱과 동일한 문장 분리, 콘텐츠 식별, 문장 이동 및 CSV 규칙
-- `src/services`: 브라우저 저장소, SQLite 사전, Firebase 문장 번역 연결
+- `src/services`: 브라우저 저장소, SQLite 사전, 자체 API 문장 번역 연결
 - `src/useCurrentSentenceTranslation.ts`: 현재 문장 자동 번역 요청의 수명, 결과, 재시도 연결
 - `src/useReader.ts`: 복원, 저장 순서 보장, 실패 재시도
 - `src/components`: 오프라인 사전, 옵션, 탐색 대화상자, 전체 읽기
@@ -69,37 +68,17 @@ Git에서 제외한 `.env.local`에 다음 환경변수를 설정한다. 실제 
 
 기존 앱의 `ReaderStore`가 파일, 저장, 사전, 번역을 함께 책임지는 단일 책임 원칙 위반을 그대로 복제하지 않고 각 서비스로 분리했다. 다만 `App.tsx`에는 화면 연결과 파일 선택/타이머 상태가 모여 있어 후속 기능 증가 시 별도 훅으로 나눌 여지가 있다.
 
-## 검증
+## 검증 (2026-09-28)
 
-- Vitest 28개: 문장 분리 예외, 빈 문서, 동일/다른 문서 열기, 인덱스 경계, 9번째 이후 단어, CSV 이스케이프, 저장 순서와 복원, 실제 SQLite 데이터/활용형/라이선스, 문장 번역의 늦은 응답 무시·재사용·재시도·숨김 처리
-- `npm run build`: TypeScript 검사, Vite 번들 생성, 정적 자원 사전 캐시 생성
-- 브라우저: 파일 열기, 문장 이동, 번역 자동 저장 및 새로고침 복원, 책갈피, 사전 결과, 검색 이동, 읽기 모드/옵션 왕복, 모바일 입력 영역 복구
-- 실제 Firebase 문장 번역 연결: 이전 사전 기반 동작에서는 `serendipitously`의 `우연히` 결과와 사용량 `1/200`을 확인했다. 현재 문장 자동 번역 전환 후 종단 성공 검증은 아직 필요하다.
-- 반응형 화면: 1280×720, 390×844, 360×800 확인, 모바일 메뉴와 옵션 대화상자 및 가로 넘침 검사
-- CSV: 브라우저에서 내려받은 실제 파일의 한국어 번역 내용 확인
-- Node 24에서 테스트 28개 통과, npm 의존성 검사 취약점 0건
-- 서버 중지 후 새로고침: 문서 및 번역 입력 복원, 캐시된 SQLite에서 `ran` 첫 조회 성공
-- 정적 자원에만 `ignoreVary`를 적용해 미리보기 서버의 `Vary: Origin`으로 인한 오프라인 모듈 캐시 누락을 방지
+- Node 24에서 웹 테스트 31개 및 프로덕션 빌드 통과. 서버 테스트 12개는 로컬과 홈서버에서 통과.
+- 서재: 기존 문서 -> 샘플 -> 번역 입력/책갈피/이동 -> 이전 문서 -> 새로고침에서 두 책의 기록 보존 확인.
+- 반응형 390x844에서 내 서재와 샘플 선택 확인. 이전 단계에서 파일 열기, 사전, 검색, CSV, 오프라인 복원도 확인.
+- 실제 홈서버 + DeepL: 동일 샘플 문장의 기본 결과는 `들었다`, 직접 존댓말 지침은 `들었습니다`로 달라짐. 40K와 AoS 프리셋 모두 정상 응답. 이는 지침 전달/응답 검증이며 작품 전체의 번역 품질을 보장하지 않는다.
+- 새 번역 4건은 HTTPS 터널 왕복 포함 약 1.2~1.5초. 같은 캐시 문장 20개 동시 요청은 20/20 성공, 중앙값 95ms, p95 99ms. 단일 클라이언트/단일 시점의 캐시 시험이며 신규 번역 20개 처리 용량이나 일반적인 사용자 속도를 뜻하지 않는다.
+- https://lingua-web-beta.vercel.app 공개 접속과 브라우저 샘플 번역 성공. 390x844에서 모바일 상태 줄 숨김 확인. 번들 장기 캐시/서비스 워커 재검증 헤더 확인. 운영 구성은 서버 README를 참고한다.
 
-최신 앱의 문장 자동 번역 흐름에 맞춘 웹 변경은 단위 테스트와 빌드로 확인한다. 실제 Firebase 종단 응답은 배포 환경의 App Check 조건에서 별도로 검증해야 한다.
+## 베타 운영 제한
 
-인터넷 공개 배포와 실제 운영 도메인의 reCAPTCHA 검증은 별도 단계다. 기존 개인정보처리방침 Hosting 설정은 수정하지 않는다.
+현재 웹은 Vercel 정적 CDN, 번역 API는 홈서버에서 실행한다. 임시 HTTPS 터널은 시험용으로, 프로세스 재시작 시 주소가 바뀌어 웹 API 주소 재빌드가 필요하다. 정식 홍보 전에는 고정 도메인 터널, 서버 가용성 확인과 백업을 마련해야 한다. 소규모 베타로 측정한 후 신규 번역 대기시간/오류율/문자 사용량을 보고 범위를 확대한다.
 
-
-## 베타 준비 검증 (2026-09-28)
-
-- 브랜치: `codex/web-beta-ready`, 웹 구현 기준 `97f7721`에서 분기.
-- 서재: 기존 단일 책을 불러온 후 샘플 열기, 번역 입력, 책갈피 추가, 문장 이동, 이전 책 복귀, 새로고침 후 두 책의 위치와 기록 수 유지 확인.
-- 저장 회귀 테스트: 책 A -> B -> 재실행 -> A -> B에서 번역 내용, 위치, 책갈피, 프로필을 확인. 기존 저장 형식도 확인.
-- 모바일 390x844: 메뉴 -> 내 서재 진입 및 두 책 목록과 샘플 버튼 확인.
-- 실제 온라인 번역: 샘플의 `Mira opened her notebook and listened to the rain.`에서 `미라는 공책을 펼치고 빗소리를 들었다.` 응답 확인.
-- 어투 반영은 미검증: 40K 및 존댓말 지침 적용 시에도 같은 응답이 반환됨. 응답 성공만으로 서버의 지침 적용을 입증할 수 없다.
-
-### 남은 배포 단계
-
-1. 기존 `lingua-af9c2` 프로젝트의 `asia-northeast3/translateProxy`에 프로필 지원 코드 배포. 앱도 같은 함수를 사용하므로 배포 범위를 이 함수로 한정한다.
-2. 배포 후 기본/40K/AoS/직접 설정을 비교한다. 명시적인 존댓말 지침, 세계관 중의어 예제를 포함한다. 실패하면 기본 번역으로 조용히 대체하지 않고 원인을 확인한다.
-3. 웹의 공개 호스팅 대상 확정 후 별도 Hosting 사이트 또는 preview channel을 사용한다. 현재 `firebase.json`의 public은 개인정보처리방침용 `hosting`이므로 곧바로 `web/dist`로 교체하지 않는다.
-4. 실제 웹 도메인의 익명 인증과 App Check를 검증한 뒤 베타 링크를 공유한다. 로컬 개발 토큰 통과는 운영 도메인 성공 근거가 아니다.
-
-현재 공개 웹 배포와 서버 코드 배포는 수행하지 않았다. 서재는 브라우저 로컬 저장이며 브라우저 데이터 삭제에 대한 백업이나 기기 간 동기화를 제공하지 않는다.
+서재는 브라우저 로컬 저장이며 데이터 삭제에 대한 전체 서재 백업이나 기기 간 동기화를 제공하지 않는다. 한 네트워크의 사용자는 번역 한도를 공유할 수 있다.

@@ -1,4 +1,4 @@
-import { cp, mkdir } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 const source = new URL(
   "../../shared/src/commonMain/composeResources/",
@@ -11,10 +11,10 @@ await cp(
   fileURLToPath(new URL("assets/", target)),
   { recursive: true },
 );
-await cp(
-  fileURLToPath(new URL("font/noto_sans_kr.ttf", source)),
-  fileURLToPath(new URL("assets/noto_sans_kr.ttf", target)),
-);
+// 이전 빌드의 대용량 TTF가 배포물에 남지 않게 제거한다.
+await rm(new URL("assets/noto_sans_kr.ttf", target), { force: true });
+await mkdir(new URL("licenses/", target), { recursive: true });
+await cp(new URL("../node_modules/@fontsource-variable/noto-sans-kr/LICENSE", import.meta.url), new URL("licenses/noto-sans-kr.txt", target));
 await cp(
   fileURLToPath(new URL("files/dict/", source)),
   fileURLToPath(new URL("dict/", target)),

@@ -89,13 +89,23 @@ export default function App() {
     const update = () => setOnline(navigator.onLine);
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
-    if ("serviceWorker" in navigator && import.meta.env.PROD)
-      navigator.serviceWorker
-        .register("/sw.js", { updateViaCache: "none" })
-        .then(() => navigator.serviceWorker.ready)
-        .then(() => setOfflineReady(true))
-        .catch(() => {});
+    // 초기 화면의 자원 요청과 겹치지 않도록 load 이후 캐시 준비를 미룬다.
+    let offlineTimer: number | undefined;
+    const prepareOffline = () => {
+      offlineTimer = window.setTimeout(() => {
+        if ("serviceWorker" in navigator && import.meta.env.PROD)
+          navigator.serviceWorker
+            .register("/sw.js", { updateViaCache: "none" })
+            .then(() => navigator.serviceWorker.ready)
+            .then(() => setOfflineReady(true))
+            .catch(() => {});
+      }, 5000);
+    };
+    if (document.readyState === "complete") prepareOffline();
+    else window.addEventListener("load", prepareOffline, { once: true });
     return () => {
+      window.clearTimeout(offlineTimer);
+      window.removeEventListener("load", prepareOffline);
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
     };
@@ -361,7 +371,7 @@ export default function App() {
             문서는 이 브라우저에 저장됩니다
           </p>
           <a
-            href="https://lingua-af9c2.web.app/privacy/"
+            href="/privacy/"
             target="_blank"
             rel="noreferrer"
           >
@@ -772,7 +782,7 @@ export default function App() {
           <nav aria-label="모바일 메뉴">{navigation}</nav>
           <a
             className="privacy-link"
-            href="https://lingua-af9c2.web.app/privacy/"
+            href="/privacy/"
             target="_blank"
             rel="noreferrer"
           >

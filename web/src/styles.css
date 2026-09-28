@@ -1,11 +1,5 @@
-@font-face {
-  font-family: "Noto Sans KR";
-  src: url("/assets/noto_sans_kr.ttf") format("truetype");
-  font-weight: 100 900;
-  font-display: swap;
-}
 :root {
-  font-family: "Noto Sans KR", sans-serif;
+  font-family: "Noto Sans KR Variable", sans-serif;
   color: #181b1e;
   background: #f1f3f5;
   font-synthesis: none;
